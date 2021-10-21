@@ -1,15 +1,34 @@
 #mevis v0.1 alpha
 
+
+#--------
+#проверяю устнаволенные пакеты, отсутствуюшие устанавливаю
+packages <- c("ggplot2", "dplyr", "readxl")
+install.packages(setdiff(packages, rownames(installed.packages())))
+
+#-----------
 library("readxl")
 library(gridExtra)
 library(ggplot2)
 library(dplyr)
-#----------------Пользовательские переменные 
+#----------------
+#Пользовательские переменные 
 Difference=1.5
 Pvalue=0.05
 Metabolite<-8
-dataset <- read_excel("D:\\Ga Processed Data.xlsx", sheet ="SIMCA 2.1")
-#----------------Объявляю глобальные переменные
+datapath="D://Ga Processed Data.xlsx"
+dataset <- read_excel(datapath, sheet ="SIMCA 2.1")
+
+#----------------
+#Объявляю глобальные переменные
+#--определяю путь к выходным файлам
+mainDir = datapath
+subDir <- "mevis_output"
+subDir2 <- sub("CEST","",Sys.time())
+subDir2<- gsub(" ", "_", subDir2)
+subDir2<- gsub(":", "-", subDir2)
+mainDir=dirname(datapath)
+#---
 Ncol= ncol(dataset)
 metabolitedata <- NULL
 predataMetaboliteName<- c()
@@ -22,17 +41,16 @@ meanGaN=NULL        #среднее дла Ga
 meanCtrlN=NULL      #среднее дла Ctrl
 #---------------- 
 
-#------ базовая фигня для данных
+#------ 
+#базовая фигня для данных
   colnames(dataset)
   TotalMetabolites<- dim(dataset)
   TotalMetabolites<- toString(TotalMetabolites[2])
   dataset
   TotalMetabolites
 
-
-#Ф-ция подготовки данных
-  
-#---- получаю названия групп Control, Ga500
+#----------
+#получаю названия групп Control, Ga500
 gaN<- data.frame(dataset[31:36, 4])
 ctrlN<- data.frame(dataset[1:6, 4])
 chemicalN_column<- rbind(gaN, ctrlN)
@@ -68,6 +86,7 @@ Data_Fun <- function(Metabolite) {
   return(metabolitedata)
 }    
 #------
+#подготавливаю данные
 rm(predata)
 rm(predataMetaboliteName)
 predata=NULL
@@ -81,7 +100,8 @@ for (i in 8:Ncol) {
   #print(metaboliteName)
 }
 
-#------считаю среднее, p value для метаболита и ищу различия
+#------
+#считаю среднее, p value для метаболита и ищу различия
 rm(data)
 rm(pvaluedata)
 data <- c()
@@ -108,7 +128,8 @@ for (i in 1:length(predata)) {
   }
   
 }
-#------строю графики и записываю в список p
+#------
+#строю графики и записываю в список p
 p <- list()
 for (i in 2:length(data)) {
 plotdata=cbind(chemicalN_column, data.frame(data[i]))
@@ -134,13 +155,21 @@ p[[i-1]]<-g
 #print(p)
 
 #TODO:
-#2:1
-Ncol= ceiling((length(data)/1.77)/3)
-Width= Ncol*10 
-Height= Width*1.77
-ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=paste("A2", i-1,".png"), width = 80, height = Height, units = "px")
+#aspect ratio 2:1
 
-do.call(grid.arrange, c(p, ncol = 4))
+#-------------
+#создаю папки
+ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
+ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(mainDir, subDir, subDir2)), FALSE)
+file.path(mainDir, subDir)
+#------------
+#сохраняю картинки
+Ncol= 8
+Width= Ncol*10
+Height= length(data)/Ncol*(Width/Ncol)
+ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("A2", i-1,".png")), width = Width, height = Height, units = "cm")
+
+
 
 
 round(length(data)/4, digits=0)
