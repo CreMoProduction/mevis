@@ -1,0 +1,17 @@
+#data range selection
+ctrl_name_row: '1:6'
+sample_name_row: '31:36'
+name_column: 4
+metabolite_start_column: 8
+
+#filter options
+difference: 1.6
+p_value: 0.05
+
+#data loading
+data_path: D://Ga Processed Data.xlsx
+excel_sheet: SIMCA 2.1
+open_popup_window: false
+
+
+

@@ -1,33 +1,32 @@
-#mevis v0.1 alpha
+#mevis v0.2 alpha
 
-
+print("Welcom to mevis")
 #--------
 #проверяю устнаволенные пакеты, отсутствуюшие устанавливаю
-packages <- c("ggplot2", "dplyr", "readxl")
+packages <- c("ggplot2", "dplyr", "readxl", "gridExtra", "tidyverse", "yaml", "svDialogs", "progress")
 install.packages(setdiff(packages, rownames(installed.packages())))
 
 #-----------
-library("readxl")
-library(gridExtra)
+library(readxl)
+library(gridExtra) #нужно для построения большого графика
 library(ggplot2)
 library(dplyr)
-#----------------
-#Пользовательские переменные 
-Difference=1.5
-Pvalue=0.05
-Metabolite<-8
-datapath="D://Ga Processed Data.xlsx"
-dataset <- read_excel(datapath, sheet ="SIMCA 2.1")
+library(tidyverse) #использую для определния пути к этому скрипту
+library(yaml)  #для импорта настроек
+library(svDialogs) #для окна ввода popup promt window
+library(progress) #делаю proogress bar
 
 #----------------
 #Объявляю глобальные переменные
 #--определяю путь к выходным файлам
 mainDir = datapath
-subDir <- "mevis_output"
+mainDir=dirname(datapath)
+mainFile<- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(datapath)) #удаляю расширение из имени файла
+subDir <- paste("mevis_output -",mainFile)
 subDir2 <- sub("CEST","",Sys.time())
 subDir2<- gsub(" ", "_", subDir2)
 subDir2<- gsub(":", "-", subDir2)
-mainDir=dirname(datapath)
+
 #---
 Ncol= ncol(dataset)
 metabolitedata <- NULL
@@ -40,6 +39,66 @@ nrowTotalN=NULL     #кол-во строок суммарно
 meanGaN=NULL        #среднее дла Ga
 meanCtrlN=NULL      #среднее дла Ctrl
 #---------------- 
+Difference=NULL
+Pvalue=NULL
+Metabolite= NULL
+ctrl_name_row = NULL
+sample_name_row = NULL
+name_column = NULL
+data_path = NULL
+excel_sheet = NULL
+dataset = NULL
+
+{#Импорт данных
+  #---получаю путь к этому файлу
+  getCurrentFileLocation <-  function(){
+    this_file <- commandArgs() %>% 
+      tibble::enframe(name = NULL) %>%
+      tidyr::separate(col=value, into=c("key", "value"), sep="=", fill='right') %>%
+      dplyr::filter(key == "--file") %>%
+      dplyr::pull(value)
+    if (length(this_file)==0)
+    {
+      this_file <- rstudioapi::getSourceEditorContext()$path
+    }
+    return(dirname(this_file))
+  }
+  currentfillelocation = getCurrentFileLocation()
+  
+  #---импортирую настройки из файла config.yml
+  config = yaml.load_file(file.path(currentfillelocation, "config.yml"))
+  
+  #----------------
+  #Пользовательские переменные 
+  Difference=config$difference
+  Pvalue=config$p_value
+  
+  Metabolite= config$metabolite_start_column
+  ctrl_name_row= config$ctrl_name_row
+  sample_name_row = config$sample_name_row
+  name_column = as.numeric(config$name_column)
+  data_path = config$data_path
+  excel_sheet = config$excel_sheet
+  
+  ctrl_name_row=as.numeric(gsub(":.*","",ctrl_name_row)):as.numeric(gsub(".*:","",ctrl_name_row))
+  sample_name_row= as.numeric(gsub(":.*","",sample_name_row)):as.numeric(gsub(".*:","",sample_name_row))
+  
+  #---импорт excel файла
+  open_popup_window = config$open_popup_window
+  if (open_popup_window==TRUE) {
+    datapath <- choose.files(default = "", caption = "Select input data (.xlsx)",
+                                    multi = FALSE)
+    sheet <- dlgInput("Enter a number", "Sheet1")$res
+    dataset <- read_excel(datapath, sheet = sheet)
+  } else {
+    #datapath="D://Ga Processed Data.xlsx"
+    #sheet= "SIMCA 2.1"
+    datapath=data_path
+    sheet= excel_sheet
+    dataset <- read_excel(datapath, sheet = sheet)
+  }
+}
+
 
 #------ 
 #базовая фигня для данных
@@ -51,8 +110,8 @@ meanCtrlN=NULL      #среднее дла Ctrl
 
 #----------
 #получаю названия групп Control, Ga500
-gaN<- data.frame(dataset[31:36, 4])
-ctrlN<- data.frame(dataset[1:6, 4])
+gaN<- data.frame(dataset[sample_name_row, name_column])
+ctrlN<- data.frame(dataset[ctrl_name_row, name_column])
 chemicalN_column<- rbind(gaN, ctrlN)
 chemicalN_column
 nrowGaN= nrow(gaN)
@@ -65,9 +124,9 @@ Data_Fun <- function(Metabolite) {
   #print(paste("plot Metabolite No", Metabolite))
   
   #---- получаю величину  пика
-  gaValue<- data.frame(dataset[31:36, Metabolite])
+  gaValue<- data.frame(dataset[sample_name_row, Metabolite])
   gaValue
-  ctrlValue<- data.frame(dataset[1:6, Metabolite])
+  ctrlValue<- data.frame(dataset[ctrl_name_row, Metabolite])
   ctrlValue
   chemicalValue_column <-rbind(gaValue, ctrlValue)
   chemicalValue_column
@@ -91,8 +150,7 @@ rm(predata)
 rm(predataMetaboliteName)
 predata=NULL
 predataMetaboliteName=NULL
-for (i in 8:Ncol) {
-  Metabolite=i
+for (i in Metabolite:Ncol) {
   metabolitedata=Data_Fun(i)
   predata <-c(predata, metabolitedata)
   #print(predata)
@@ -121,10 +179,10 @@ for (i in 1:length(predata)) {
     if (DifferenceNup>=Difference | DifferenceNdown>=Difference & tTest<=Pvalue){ 
            data= c(data, predata[i])
            pvaluedata= c(pvaluedata, tTest)
-           print(paste("No",i,"| p value ",tTest, ". Difference Up and Down", DifferenceNup, " ", DifferenceNdown))
+           print(paste(colnames(df)," | p value ",tTest, ". Difference Up and Down", DifferenceNup, " ", DifferenceNdown))
            } else {0}
   } else {
-    print(paste("No",i,"| does not meet criterias"))
+    print(paste(colnames(df)," | does not meet criterias"))
   }
   
 }
@@ -144,8 +202,8 @@ y=names(plotdata)[2]
        x="",
        title=paste("p value=", format(round( pvaluedata[i-1], digits = 10), scientific=FALSE))
   )+
-  theme(plot.title = element_text(size=10), 
-        plot.subtitle = element_text(size=10),
+  theme(plot.title = element_text(size=7), 
+        plot.subtitle = element_text(size=7),
         legend.position = "none") #удаляю легенду
 #geom_text(aes(label=round(value, 2)), size=3)+ #указываю величину площади пика и округляю ее
 #ylim(0, 5000) #указываю мин макс значения для y axis
@@ -154,58 +212,40 @@ p[[i-1]]<-g
 }
 #print(p)
 
-#TODO:
-#aspect ratio 2:1
+
 
 #-------------
 #создаю папки
 ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(mainDir, subDir, subDir2)), FALSE)
-file.path(mainDir, subDir)
+file.path(mainDir, subDir, subDir2)
 #------------
 #сохраняю картинки
 Ncol= 8
 Width= Ncol*10
 Height= length(data)/Ncol*(Width/Ncol)
-ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("A2", i-1,".png")), width = Width, height = Height, units = "cm")
 
+pb <- progress_bar$new(total = length(p))
+print("saving grid plot")
+ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("grid_layout", i-1,".png")), width = Width, height = Height, units = "cm")
+print("saving each plots")
+for (i in 1:length(p)) {
+  pb$tick() #progress bar
+  Sys.sleep(1 / length(p))
+  ggsave(p[[i]], file=file.path(mainDir, subDir, subDir2, paste("A", i-1,".png")), width = 800, height = 900, units = "px")
+}
 
-
-
-round(length(data)/4, digits=0)
-
-
-#------
-
-
-#подготавливаю данные для t-теста
-
-gaValue_t_test= gaValue
-colnames(gaValue_t_test)<- "gaValue"
-gaValue_t_test
-
-ctrlValue_t_test= ctrlValue
-colnames(ctrlValue_t_test)<- "ctrlValue"
-ctrlValue_t_test
-
-df_t_test= cbind(gaValue_t_test, ctrlValue_t_test)
-df_t_test
-#t(df_t_test)  #транспонировать
-colnames(df_t_test)
-
-
-t.test(df_t_test)
-t.test(df_t_test)[["p.value"]]
-ifelse(t.test(df_t_test)[["p.value"]]< 0.05,
-       1,
-       0
-       )
+print("I'm done")
 
 
 
 
 
-rm(Q)
+
+
+
+
+
 
 
  
