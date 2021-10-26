@@ -1,6 +1,6 @@
 #mevis v0.2 alpha
 
-print("Welcom to mevis")
+print("Welcome to mevis")
 #--------
 #проверяю устнаволенные пакеты, отсутствуюшие устанавливаю
 packages <- c("ggplot2", "dplyr", "readxl", "gridExtra", "tidyverse", "yaml", "svDialogs", "progress")
@@ -13,29 +13,22 @@ library(ggplot2)
 library(dplyr)
 library(tidyverse) #использую для определния пути к этому скрипту
 library(yaml)  #для импорта настроек
-library(svDialogs) #для окна ввода popup promt window
-library(progress) #делаю proogress bar
+library(svDialogs) #для окна ввода popup prompt window
+library(progress) #делаю progress bar
 
 #----------------
 #Объявляю глобальные переменные
-#--определяю путь к выходным файлам
-mainDir = datapath
-mainDir=dirname(datapath)
-mainFile<- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(datapath)) #удаляю расширение из имени файла
-subDir <- paste("mevis_output -",mainFile)
-subDir2 <- sub("CEST","",Sys.time())
-subDir2<- gsub(" ", "_", subDir2)
-subDir2<- gsub(":", "-", subDir2)
+
 
 #---
-Ncol= ncol(dataset)
+Ncol= NULL
 metabolitedata <- NULL
 predataMetaboliteName<- c()
 predata <- c()
 data <- c()
 nrowGaN=NULL        #кол-во строк Галлий
 nrowCtrlN=NULL      #кол-во строк контроля
-nrowTotalN=NULL     #кол-во строок суммарно
+nrowTotalN=NULL     #кол-во строк суммарно
 meanGaN=NULL        #среднее дла Ga
 meanCtrlN=NULL      #среднее дла Ctrl
 #---------------- 
@@ -96,9 +89,18 @@ dataset = NULL
     datapath=data_path
     sheet= excel_sheet
     dataset <- read_excel(datapath, sheet = sheet)
+    Ncol= ncol(dataset)
   }
 }
 
+#--определяю путь к выходным файлам
+mainDir = datapath
+mainDir=dirname(datapath)
+mainFile<- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(datapath)) #удаляю расширение из имени файла
+subDir <- paste("mevis_output -",mainFile)
+subDir2 <- sub("CEST","",Sys.time())
+subDir2<- gsub(" ", "_", subDir2)
+subDir2<- gsub(":", "-", subDir2)
 
 #------ 
 #базовая фигня для данных
@@ -225,12 +227,17 @@ Ncol= 8
 Width= Ncol*10
 Height= length(data)/Ncol*(Width/Ncol)
 
-pb <- progress_bar$new(total = length(p))
+pb1 <- progress_bar$new(total = length(p))
+pb2 <- progress_bar$new(total = length(p))
 print("saving grid plot")
+print("please wait")
 ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("grid_layout", i-1,".png")), width = Width, height = Height, units = "cm")
-print("saving each plots")
+
+
+
+print("saving each plot")
 for (i in 1:length(p)) {
-  pb$tick() #progress bar
+  pb2$tick() #progress bar
   Sys.sleep(1 / length(p))
   ggsave(p[[i]], file=file.path(mainDir, subDir, subDir2, paste("A", i-1,".png")), width = 800, height = 900, units = "px")
 }
