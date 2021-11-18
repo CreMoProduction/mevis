@@ -1,11 +1,13 @@
 #data range selection
-ctrl_name_row: '1:6'
-sample_name_row: '31:36'
-name_column: 4
+#ctrl_name_row: '1:6'
+#sample_name_row: '31:36'
+condition_name_column: 4
+condition_name_row: 1,2:6,25:36
 metabolite_start_column: 8
+prime_condition_name: 
 
 #filter options
-difference: 1.6
+fold_change: 1.6
 p_value: 0.05
 
 #data loading

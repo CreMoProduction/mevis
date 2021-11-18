@@ -3,6 +3,7 @@ TITLE mevis
 
 if not exist "C:\mevis_data\" mkdir C:\mevis_data
 COPY "%~dp0\config.yml" "C:\mevis_data\config.yml"
+rem echo %~dp0 > data
 cls
 setlocal enabledelayedexpansion
 set "dot=."
