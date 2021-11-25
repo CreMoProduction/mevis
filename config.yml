@@ -26,16 +26,20 @@ open_popup_window: false
 #export plots for parametric and non-parametric data
 
 
-#export plot based on Kruskal Wallis
+#export data based on Kruskal Wallis
 export_median_plot: true
-#export plot based on ANOVA
+export_median_grid_plot: true
+export_median_volcano_plot: true
+export_median_xls_list: true
+#export data based on ANOVA
 export_mean_plot: true
-export_grid_plot: true
-export_volcano_plot: true
+export_mean_grid_plot: true
+export_mean_volcano_plot: true
+export_mean_xls_list: true
 
 
 width: 800
 height: 900
 num_cols_grid: 8
 num_grid: 10
-
+plot_title_size: 7

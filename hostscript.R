@@ -11,7 +11,8 @@ packages <- c("ggplot2",
               "tidyverse", #использую для определния пути к этому скрипту
               "yaml",      #для импорта настроек
               "svDialogs", #для окна ввода popup prompt window
-              "progress"   #делаю progress bar
+              "progress",  #делаю progress bar
+              "rio"        #экспорт xlsx файл
               )
 install.packages(setdiff(packages, rownames(installed.packages())))
 
@@ -106,10 +107,10 @@ dataset = NULL
   export_mean_xls_list= config$export_mean_xls_list
   
   width= config$width
-  height= config$height
-  num_cols_grid= config$num_cols_grid
-  num_grid= config$num_grid
-  plot_title_size= config$plot_title_size
+  height= config$height 
+  num_cols_grid= config$num_cols_grid      #кол-во колонок в grid plot
+  num_grid= config$num_grid                #кол-во 
+  plot_title_size= config$plot_title_size  #размер шрифта для надписей награфике
   
   
   
@@ -229,7 +230,8 @@ data_mean <- c()
 data_median <- c()
 meandata <- c()
 mediandata <- c()
-sddata <- c()
+sd_mean_data <- c()
+sd_median_data <- c()
 pvalue_anova_data <- c()
 pvalue_kruskalwallis_data <- c()
 log2_fold_change_mean_data <- c()
@@ -266,7 +268,7 @@ for (i in 2:length(predata)) {
     if (df.aov<=Pvalue) {
       data_mean=c(data_mean, predata[i])
       meandata= c(meandata, mean)
-      sddata= c(sddata, stdev)
+      sd_mean_data= c(sd_mean_data, stdev)
       pvalue_anova_data= c(pvalue_anova_data, df.aov)
       log2_fold_change_mean_data= c(log2_fold_change_mean_data, log2(DifferenceNup_mean))
       log2_pvalue_anova_data= c(log2_pvalue_anova_data, log2(df.aov))
@@ -277,7 +279,7 @@ for (i in 2:length(predata)) {
     if (df.kruskal<=Pvalue) {
       data_median=c(data_median, predata[i])
       mediandata= c(mediandata, median)
-      sddata= c(sddata, stdev)
+      sd_median_data= c(sd_median_data, stdev)
       pvalue_kruskalwallis_data= c(pvalue_kruskalwallis_data, df.kruskal)
       log2_pvalue_kruskalwallis_data= c(log2_pvalue_kruskalwallis_data, log2(df.kruskal))
       log2_fold_change_median_data= c(log2_fold_change_median_data, log2(DifferenceNup_median))
@@ -289,6 +291,50 @@ for (i in 2:length(predata)) {
 }
 
 #------
+#экспортирую xlsx
+
+
+colnames(Unique_Conditions)=NULL 
+z1=NULL
+z2=NULL
+z=t(Unique_Conditions)
+for (i in 1:ncol(z)) {
+  z1[i]=paste("Median ","'", z[i], "'", sep="")
+  }
+for (i in 1:ncol(z)) {
+  z2[i]=paste("StDev ","'", z[i], "'", sep="")
+}
+q=data.frame(colnames(data.frame(data_median)))
+colnames(q)=NULL
+q=rbind("Metabolite", q)
+w=data.frame(fold_change_median_data)
+colnames(w)=NULL
+w=rbind("FC", w)
+e=data.frame(pvalue_kruskalwallis_data)
+colnames(e)=NULL
+e=rbind("p value", e)
+r=NULL
+for (i in 2:length(mediandata)) {
+    if((i %% 2) == 0) {
+      r= c(r, mediandata[i])
+      }
+}
+r=rbind(z1,t(data.frame(r)))
+t=NULL
+for (i in 2:length(sd_median_data)) {
+  if((i %% 2) == 0) {
+    t= c(t, sd_median_data[i])
+  }
+}
+t=rbind(z2, t(data.frame(t)))
+File= cbind(q,w,e,r,t)
+
+
+filepath=file.path(mainDir, subDir, subDir2, paste("A", i-1,".xlsx"))
+export(File, filepath)
+
+
+
 
 
 
@@ -300,7 +346,7 @@ p_median_grid <- list()
 p_mean <- list()
 p_mean_grid <- list()
 
-Plot <- function(P_data, pvalue, FC)  {
+Plot <- function(P_data, pvalue, FC, T_size)  {
   print(data)
   for (i in 1:length(P_data)) {
   plotdata=cbind(chemicalN_column, data.frame(P_data[i]))
@@ -313,10 +359,10 @@ Plot <- function(P_data, pvalue, FC)  {
     labs(y="peak area", 
          x="",
          title=colnames(plotdata)[2],
-         subtitle=paste("p value=", format(round(pvalue[i], digits = 5), scientific=TRUE), "\nFC=", format(round(FC[i], digits = 3), scientific=FALSE)),
+         subtitle=paste("p value=", format(round(pvalue[i], digits = 5), scientific=FALSE), "\nFC=", format(round(FC[i], digits = 3), scientific=FALSE)),
     )+
-    theme(plot.title = element_text(size=7), 
-          plot.subtitle = element_text(size=7),
+    theme(plot.title = element_text(size=T_size), 
+          plot.subtitle = element_text(size=T_size/1.3),
           legend.position = "none") #удаляю легенду
   #geom_text(aes(label=round(value, 2)), size=3)+ #указываю величину площади пика и округляю ее
   #ylim(0, 5000) #указываю мин макс значения для y axis
@@ -326,7 +372,7 @@ Plot <- function(P_data, pvalue, FC)  {
   return(p)
 }
 
-p_median= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data)
+p_median= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size)
 p_median_grid 
 p_mean= Plot(data_mean, pvalue_anova_data, fold_change_mean_data)
 p_mean_grid
@@ -339,7 +385,7 @@ ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(ma
 file.path(mainDir, subDir, subDir2)
 #------------
 #сохраняю картинки из списка p
-Ncol= 8
+Ncol= num_cols_grid
 Width= Ncol*10
 Height= length(data)/Ncol*(Width/Ncol)
 
