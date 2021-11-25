@@ -1,10 +1,15 @@
 #data range selection
+
 #ctrl_name_row: '1:6'
 #sample_name_row: '31:36'
 condition_name_column: 4
 condition_name_row: 1,2:6,25:36
 metabolite_start_column: 8
-prime_condition_name: 
+metabolite_list_column_enabled: false
+#if --metabolite_list_column_enabled: true-- then specify columns in --metabolite_list_column--
+metabolite_list_column: 8,10:14,20
+#type in a name of prime condition in --prime_condition_name-- to calculate time fold change 
+prime_condition_name: Ga 500
 
 #filter options
 fold_change: 1.6
@@ -15,5 +20,22 @@ data_path: D://Ga Processed Data.xlsx
 excel_sheet: SIMCA 2.1
 open_popup_window: false
 
+#settings
 
+
+#export plots for parametric and non-parametric data
+
+
+#export plot based on Kruskal Wallis
+export_median_plot: true
+#export plot based on ANOVA
+export_mean_plot: true
+export_grid_plot: true
+export_volcano_plot: true
+
+
+width: 800
+height: 900
+num_cols_grid: 8
+num_grid: 10
 
