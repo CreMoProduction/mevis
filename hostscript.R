@@ -40,17 +40,10 @@ metabolitedata <- NULL
 predataMetaboliteName<- c()
 predata <- c()
 data <- c()
-nrowGaN=NULL        #кол-во строк Галлий
-nrowCtrlN=NULL      #кол-во строк контроля
-nrowTotalN=NULL     #кол-во строк суммарно
-meanGaN=NULL        #среднее дла Ga
-meanCtrlN=NULL      #среднее дла Ctrl
 #---------------- 
 Difference=NULL
 Pvalue=NULL
 Metabolite= NULL
-ctrl_name_row = NULL
-sample_name_row = NULL
 name_column = NULL
 data_path = NULL
 excel_sheet = NULL
@@ -160,11 +153,7 @@ chemicalN_column= NULL
   }
   Unique_Conditions = unique(chemicalN_column)
   ChimicalName= names(chemicalN)
-#---кажется можно удалить-00000000000
-#nrowGaN= nrow(gaN)
-#nrowCtrlN= nrow(ctrlN)
-#nrowTotalN=nrow(chemicalN_column)
-#---
+
 
 
 Data_Fun <- function(Metabolite) {
@@ -241,6 +230,11 @@ log2_pvalue_kruskalwallis_data <- c()
 fold_change_mean_data <- c()
 fold_change_median_data <- c()
 
+DifferenceNup_mean <- c()
+DifferenceNdown_mean <- c()
+DifferenceNup_median <- c()
+DifferenceNdown_median <- c()
+
 #алгоритм сортировки
 for (i in 2:length(predata)) {
   df=data.frame(chemicalN_column,predata[i])
@@ -256,16 +250,20 @@ for (i in 2:length(predata)) {
   #считаю time fold change
   for (n in 1:nrow(Unique_Conditions)) {
     if (Unique_Conditions[n,1]!=prime_condition_name) {
-      DifferenceNup_mean=mean[mean$Chemical==Unique_Conditions[n,1],][1,2]/mean[mean$Chemical==prime_condition_name,][1,2]
-      DifferenceNdown_mean=mean[mean$Chemical==prime_condition_name,][1,2]/mean[mean$Chemical==Unique_Conditions[n,1],][1,2]
-      DifferenceNup_median=median[median$Chemical==Unique_Conditions[n,1],][1,2]/median[median$Chemical==prime_condition_name,][1,2]
-      DifferenceNdown_median=median[median$Chemical==prime_condition_name,][1,2]/median[median$Chemical==Unique_Conditions[n,1],][1,2]
+      DifferenceNup_mean= mean[mean$Chemical==Unique_Conditions[n,1],][1,2]/mean[mean$Chemical==prime_condition_name,][1,2]
+      DifferenceNdown_mean= mean[mean$Chemical==prime_condition_name,][1,2]/mean[mean$Chemical==Unique_Conditions[n,1],][1,2]
+      DifferenceNup_median= median[median$Chemical==Unique_Conditions[n,1],][1,2]/median[median$Chemical==prime_condition_name,][1,2]
+      DifferenceNdown_median= median[median$Chemical==prime_condition_name,][1,2]/median[median$Chemical==Unique_Conditions[n,1],][1,2]
     } else {
     }
-  } 
+  }
+  DifferenceNup_mean
+  DifferenceNdown_mean
+  DifferenceNup_median
+  DifferenceNdown_median
   #соритрую
-  if (DifferenceNup_mean>=Difference | DifferenceNdown_mean>=Difference) {
-    if (df.aov<=Pvalue) {
+  if (DifferenceNup_mean >= Difference | DifferenceNdown_mean >= Difference) {
+    if (df.aov <= Pvalue) {
       data_mean=c(data_mean, predata[i])
       meandata= c(meandata, mean)
       sd_mean_data= c(sd_mean_data, stdev)
@@ -275,8 +273,8 @@ for (i in 2:length(predata)) {
       fold_change_mean_data= c(fold_change_mean_data, max(DifferenceNup_mean, DifferenceNdown_mean))
     }
   }
-  if (DifferenceNup_median>=Difference | DifferenceNdown_median>=Difference) {
-    if (df.kruskal<=Pvalue) {
+  if (DifferenceNup_median >= Difference | DifferenceNdown_median >= Difference) {
+    if (df.kruskal <= Pvalue) {
       data_median=c(data_median, predata[i])
       mediandata= c(mediandata, median)
       sd_median_data= c(sd_median_data, stdev)
