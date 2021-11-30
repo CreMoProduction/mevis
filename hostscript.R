@@ -135,6 +135,8 @@ subDir <- paste("mevis_output -",mainFile)
 subDir2 <- sub("CEST","",Sys.time())
 subDir2<- gsub(" ", "_", subDir2)
 subDir2<- gsub(":", "-", subDir2)
+subDir3_median<- "median sort"
+subDir3_mean<- "mean sort"
 
 #------ 
 #базовая фигня для данных
@@ -225,8 +227,8 @@ pvalue_anova_data <- c()
 pvalue_kruskalwallis_data <- c()
 log2_fold_change_mean_data <- c()
 log2_fold_change_median_data <- c()
-log2_pvalue_anova_data <- c()
-log2_pvalue_kruskalwallis_data <- c()
+log10_pvalue_anova_data <- c()
+log10_pvalue_kruskalwallis_data <- c()
 fold_change_mean_data <- c()
 fold_change_median_data <- c()
 
@@ -250,17 +252,17 @@ for (i in 2:length(predata)) {
   #считаю time fold change
   for (n in 1:nrow(Unique_Conditions)) {
     if (Unique_Conditions[n,1]!=prime_condition_name) {
-      DifferenceNup_mean= mean[mean$Chemical==Unique_Conditions[n,1],][1,2]/mean[mean$Chemical==prime_condition_name,][1,2]
-      DifferenceNdown_mean= mean[mean$Chemical==prime_condition_name,][1,2]/mean[mean$Chemical==Unique_Conditions[n,1],][1,2]
-      DifferenceNup_median= median[median$Chemical==Unique_Conditions[n,1],][1,2]/median[median$Chemical==prime_condition_name,][1,2]
-      DifferenceNdown_median= median[median$Chemical==prime_condition_name,][1,2]/median[median$Chemical==Unique_Conditions[n,1],][1,2]
+      DifferenceNup_mean= c(DifferenceNup_mean, mean[mean$Chemical==Unique_Conditions[n,1],][1,2]/mean[mean$Chemical==prime_condition_name,][1,2])
+      DifferenceNdown_mean= c(DifferenceNdown_mean, mean[mean$Chemical==prime_condition_name,][1,2]/mean[mean$Chemical==Unique_Conditions[n,1],][1,2])
+      DifferenceNup_median= c(DifferenceNup_median, median[median$Chemical==Unique_Conditions[n,1],][1,2]/median[median$Chemical==prime_condition_name,][1,2])
+      DifferenceNdown_median= c(DifferenceNdown_median, median[median$Chemical==prime_condition_name,][1,2]/median[median$Chemical==Unique_Conditions[n,1],][1,2])
     } else {
     }
   }
-  DifferenceNup_mean
-  DifferenceNdown_mean
-  DifferenceNup_median
-  DifferenceNdown_median
+  max(DifferenceNup_mean)
+  max(DifferenceNdown_mean)
+  max(DifferenceNup_median)
+  max(DifferenceNdown_median)
   #соритрую
   if (DifferenceNup_mean >= Difference | DifferenceNdown_mean >= Difference) {
     if (df.aov <= Pvalue) {
@@ -269,7 +271,7 @@ for (i in 2:length(predata)) {
       sd_mean_data= c(sd_mean_data, stdev)
       pvalue_anova_data= c(pvalue_anova_data, df.aov)
       log2_fold_change_mean_data= c(log2_fold_change_mean_data, log2(DifferenceNup_mean))
-      log2_pvalue_anova_data= c(log2_pvalue_anova_data, log2(df.aov))
+      log10_pvalue_anova_data= c(log10_pvalue_anova_data, log10(df.aov))
       fold_change_mean_data= c(fold_change_mean_data, max(DifferenceNup_mean, DifferenceNdown_mean))
     }
   }
@@ -279,57 +281,58 @@ for (i in 2:length(predata)) {
       mediandata= c(mediandata, median)
       sd_median_data= c(sd_median_data, stdev)
       pvalue_kruskalwallis_data= c(pvalue_kruskalwallis_data, df.kruskal)
-      log2_pvalue_kruskalwallis_data= c(log2_pvalue_kruskalwallis_data, log2(df.kruskal))
-      log2_fold_change_median_data= c(log2_fold_change_median_data, log2(DifferenceNup_median))
+      log10_pvalue_kruskalwallis_data= c(log10_pvalue_kruskalwallis_data, log2(df.kruskal))
+      log2_fold_change_median_data= c(log2_fold_change_median_data, log10(DifferenceNup_median))
       fold_change_median_data= c(fold_change_median_data, max(DifferenceNup_median, DifferenceNdown_median))
     }
   }
-  
-  
+  DifferenceNup_mean <- NULL
+  DifferenceNdown_mean <- NULL
+  DifferenceNup_median <- NULL
+  DifferenceNdown_median <- NULL
 }
 
 #------
-#экспортирую xlsx
-
-
-colnames(Unique_Conditions)=NULL 
-z1=NULL
-z2=NULL
-z=t(Unique_Conditions)
-for (i in 1:ncol(z)) {
-  z1[i]=paste("Median ","'", z[i], "'", sep="")
+#создаю xlsx таблицу
+export_xlsx <- function(in_data, fc, pvalue, avg_data, sd) {
+  colnames(Unique_Conditions)=NULL 
+  z1=NULL
+  z2=NULL
+  z=t(Unique_Conditions)
+  for (i in 1:ncol(z)) {
+    z1[i]=paste("Median ","'", z[i], "'", sep="")
+    }
+  for (i in 1:ncol(z)) {
+    z2[i]=paste("StDev ","'", z[i], "'", sep="")
   }
-for (i in 1:ncol(z)) {
-  z2[i]=paste("StDev ","'", z[i], "'", sep="")
-}
-q=data.frame(colnames(data.frame(data_median)))
-colnames(q)=NULL
-q=rbind("Metabolite", q)
-w=data.frame(fold_change_median_data)
-colnames(w)=NULL
-w=rbind("FC", w)
-e=data.frame(pvalue_kruskalwallis_data)
-colnames(e)=NULL
-e=rbind("p value", e)
-r=NULL
-for (i in 2:length(mediandata)) {
+  q=data.frame(colnames(data.frame(in_data)))
+  colnames(q)=NULL
+  q=rbind("Metabolite", q)
+  w=data.frame(fc)
+  colnames(w)=NULL
+  w=rbind("FC", w)
+  e=data.frame(pvalue)
+  colnames(e)=NULL
+  e=rbind("p value", e)
+  r=NULL
+  for (i in 2:length(avg_data)) {
+      if((i %% 2) == 0) {
+        r= c(r, avg_data[i])
+        }
+  }
+  r=rbind(z1,t(data.frame(r)))
+  t=NULL
+  for (i in 2:length(sd)) {
     if((i %% 2) == 0) {
-      r= c(r, mediandata[i])
-      }
-}
-r=rbind(z1,t(data.frame(r)))
-t=NULL
-for (i in 2:length(sd_median_data)) {
-  if((i %% 2) == 0) {
-    t= c(t, sd_median_data[i])
+      t= c(t, sd[i])
+    }
   }
+  t=rbind(z2, t(data.frame(t)))
+  File= cbind(q,w,e,r,t)
+  return(File)
 }
-t=rbind(z2, t(data.frame(t)))
-File= cbind(q,w,e,r,t)
 
 
-filepath=file.path(mainDir, subDir, subDir2, paste("A", i-1,".xlsx"))
-export(File, filepath)
 
 
 
@@ -357,7 +360,7 @@ Plot <- function(P_data, pvalue, FC, T_size)  {
     labs(y="peak area", 
          x="",
          title=colnames(plotdata)[2],
-         subtitle=paste("p value=", format(round(pvalue[i], digits = 5), scientific=FALSE), "\nFC=", format(round(FC[i], digits = 3), scientific=FALSE)),
+         subtitle=paste("p value=", format(round(pvalue[i], digits = 5), scientific=FALSE), "\nFC=", format(round(FC[i], digits = 2), scientific=FALSE)),
     )+
     theme(plot.title = element_text(size=T_size), 
           plot.subtitle = element_text(size=T_size/1.3),
@@ -371,37 +374,72 @@ Plot <- function(P_data, pvalue, FC, T_size)  {
 }
 
 p_median= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size)
-p_median_grid 
-p_mean= Plot(data_mean, pvalue_anova_data, fold_change_mean_data)
-p_mean_grid
+p_median_grid= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size+5)
+p_mean= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size)
+p_mean_grid= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size+5)
 
 
 #-------------
 #создаю папки
 ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(mainDir, subDir, subDir2)), FALSE)
+ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_median)), dir.create(file.path(mainDir, subDir, subDir2, subDir3_median)), FALSE)
+ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_mean)), dir.create(file.path(mainDir, subDir, subDir2, subDir3_mean)), FALSE)
 file.path(mainDir, subDir, subDir2)
 #------------
+#сохраняю xlsx файлы
+File= export_xlsx(data_median, fold_change_median_data, pvalue_kruskalwallis_data, mediandata, sd_median_data)
+filepath=file.path(mainDir, subDir, subDir2, paste("median_sort_list",".xlsx", sep=""))
+export(File, filepath)
+File=NULL
+
+File= export_xlsx(data_mean, fold_change_mean_data, pvalue_anova_data, meandata, sd_mean_data)
+filepath=file.path(mainDir, subDir, subDir2, paste("mean_sort_list",".xlsx", sep=""))
+export(File, filepath)
+#------------
+#сохраняю volcano plot
+
+#------------
 #сохраняю картинки из списка p
-Ncol= num_cols_grid
-Width= Ncol*10
-Height= length(data)/Ncol*(Width/Ncol)
 
 
-
-print("saving grid plot")
-print("please wait")
-#ggsave(do.call(grid.arrange, c(p, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("grid_layout", i-1,".png")), width = Width, height = Height, units = "cm")
-
-
-pb1 <- progress_bar$new(total = length(p_median))
-print("saving individual plot")
+#сохраняю median картинки
+pb <- progress_bar$new(format = "[:bar] :current/:total (:percent)", total = length(p_median))
+print("saving median plot")
 for (i in 1:length(p_median)) {
-  pb1$tick() #progress bar
+  pb$tick() #progress bar
   Sys.sleep(1 / length(p_median))
-  ggsave(p_median[[i]], file=file.path(mainDir, subDir, subDir2, paste("A", i-1,".png")), width = 800, height = 900, units = "px")
+  ggsave(p_median[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_median, paste("mean_plot_", i, ".png", sep="")), width = 800, height = 900, units = "px")
 }
 
+Ncol= num_cols_grid
+Width= Ncol*num_grid
+Height= length(p_median)/Ncol*(Width/Ncol)
+print("saving median grid plot")
+print("please wait")
+ggsave(do.call(grid.arrange, c(p_median_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("median_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
+
+
+
+#сохраняю mean картинки
+pb <- progress_bar$new(format = "[:bar] :current/:total (:percent)", total = length(p_mean))
+print("saving mean plot")
+for (i in 1:length(p_mean)) {
+  pb$tick() #progress bar
+  Sys.sleep(1 / length(p_mean))
+  ggsave(p_mean[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_mean, paste("median_plot_", i, ".png", sep="")), width = 800, height = 900, units = "px")
+}
+
+
+Ncol= num_cols_grid
+Width= Ncol*num_grid
+Height= length(p_mean)/Ncol*(Width/Ncol)
+print("saving mean grid plot")
+print("please wait")
+ggsave(do.call(grid.arrange, c(p_mean_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("mean_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
+
+
+Sys.sleep(3)
 print("I'm done")
 
 
