@@ -12,7 +12,8 @@ packages <- c("ggplot2",
               "yaml",      #для импорта настроек
               "svDialogs", #для окна ввода popup prompt window
               "progress",  #делаю progress bar
-              "rio"        #экспорт xlsx файл
+              "rio",       #экспорт xlsx файл
+              "hnisc"      #нужно для error bars в mean plot
               )
 install.packages(setdiff(packages, rownames(installed.packages())))
 
@@ -99,8 +100,8 @@ dataset = NULL
   export_mean_volcano_plot= config$export_mean_volcano_plot
   export_mean_xls_list= config$export_mean_xls_list
   
-  width= config$width
-  height= config$height 
+  plot_width= config$plot_width
+  plot_height= config$plot_height 
   num_cols_grid= config$num_cols_grid      #кол-во колонок в grid plot
   num_grid= config$num_grid                #кол-во 
   plot_title_size= config$plot_title_size  #размер шрифта для надписей награфике
@@ -281,8 +282,8 @@ for (i in 2:length(predata)) {
       mediandata= c(mediandata, median)
       sd_median_data= c(sd_median_data, stdev)
       pvalue_kruskalwallis_data= c(pvalue_kruskalwallis_data, df.kruskal)
-      log10_pvalue_kruskalwallis_data= c(log10_pvalue_kruskalwallis_data, log2(df.kruskal))
-      log2_fold_change_median_data= c(log2_fold_change_median_data, log10(DifferenceNup_median))
+      log10_pvalue_kruskalwallis_data= c(log10_pvalue_kruskalwallis_data, log10(df.kruskal))
+      log2_fold_change_median_data= c(log2_fold_change_median_data, log2(DifferenceNup_median))
       fold_change_median_data= c(fold_change_median_data, max(DifferenceNup_median, DifferenceNdown_median))
     }
   }
@@ -329,6 +330,8 @@ export_xlsx <- function(in_data, fc, pvalue, avg_data, sd) {
   }
   t=rbind(z2, t(data.frame(t)))
   File= cbind(q,w,e,r,t)
+  colnames(File) <- File[1,]
+  File <- File[-1, ] 
   return(File)
 }
 
@@ -347,7 +350,7 @@ p_median_grid <- list()
 p_mean <- list()
 p_mean_grid <- list()
 
-Plot <- function(P_data, pvalue, FC, T_size)  {
+Plot_median <- function(P_data, pvalue, FC, T_size)  {
   print(data)
   for (i in 1:length(P_data)) {
   plotdata=cbind(chemicalN_column, data.frame(P_data[i]))
@@ -373,12 +376,44 @@ Plot <- function(P_data, pvalue, FC, T_size)  {
   return(p)
 }
 
-p_median= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size)
-p_median_grid= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size+5)
-p_mean= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size)
-p_mean_grid= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size+5)
+Plot_mean <- function(P_data, pvalue, FC, T_size)  {
+  print(data)
+  for (i in 1:length(P_data)) {
 
+    plotdata=cbind(chemicalN_column, data.frame(P_data[i]))
+    x=names(plotdata)[1]
+    y=names(plotdata)[2]
+    g<- ggplot(plotdata, aes_string(x=x, y=y, color=x, shape=x)) +
+      theme_classic()+
+      stat_summary(fun.data="mean_sdl", fun.args = list(mult=1), 
+                   geom="pointrange", width=0.2, color="grey70", size=0.5)+
+      geom_jitter(width = 0.25, size=3)+ 
+      labs(y="peak area", 
+           x="",
+           title=colnames(plotdata)[2],
+           subtitle=paste("p value=", format(round(pvalue[i], digits = 5), scientific=FALSE), "\nFC=", format(round(FC[i], digits = 2), scientific=FALSE)),
+      )+
+      theme(plot.title = element_text(size=T_size), 
+            plot.subtitle = element_text(size=T_size/1.3),
+            legend.position = "none") #удаляю легенду
+    #geom_text(aes(label=round(value, 2)), size=3)+ #указываю величину площади пика и округляю ее
+    #ylim(0, 5000) #указываю мин макс значения для y axis
+    g
+    p[[i]]<-g
+  }
+  return(p)
+}
 
+p_median= Plot_median(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size)
+p_median_grid= Plot_median(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size+5)
+p_median_volcano
+p_mean= Plot_mean(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size)
+p_mean_grid= Plot_mean(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size+5)
+p_mean_volcano
+
+plotdataq=cbind(chemicalN_column, data.frame(data_mean[2]))
+cbind(Unique_Conditions, data.frame(meandata[2])-data.frame(sd_mean_data[2]))
+data_mean[2]
 #-------------
 #создаю папки
 ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
@@ -388,19 +423,26 @@ ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_mean)), dir.creat
 file.path(mainDir, subDir, subDir2)
 #------------
 #сохраняю xlsx файлы
+print("saving median xlsx")
 File= export_xlsx(data_median, fold_change_median_data, pvalue_kruskalwallis_data, mediandata, sd_median_data)
 filepath=file.path(mainDir, subDir, subDir2, paste("median_sort_list",".xlsx", sep=""))
 export(File, filepath)
 File=NULL
 
+print("saving mean xlsx")
 File= export_xlsx(data_mean, fold_change_mean_data, pvalue_anova_data, meandata, sd_mean_data)
 filepath=file.path(mainDir, subDir, subDir2, paste("mean_sort_list",".xlsx", sep=""))
 export(File, filepath)
+File=NULL
 #------------
-#сохраняю volcano plot
+
 
 #------------
 #сохраняю картинки из списка p
+
+#сохраняю volcano plot
+
+
 
 
 #сохраняю median картинки
@@ -409,15 +451,14 @@ print("saving median plot")
 for (i in 1:length(p_median)) {
   pb$tick() #progress bar
   Sys.sleep(1 / length(p_median))
-  ggsave(p_median[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_median, paste("mean_plot_", i, ".png", sep="")), width = 800, height = 900, units = "px")
+  #ggsave(p_median[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_median, paste("mean_plot_", i, ".png", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 Ncol= num_cols_grid
 Width= Ncol*num_grid
 Height= length(p_median)/Ncol*(Width/Ncol)
-print("saving median grid plot")
-print("please wait")
-ggsave(do.call(grid.arrange, c(p_median_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("median_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
+print("saving median grid plot, please wait")
+#ggsave(do.call(grid.arrange, c(p_median_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("median_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
 
 
 
@@ -427,16 +468,16 @@ print("saving mean plot")
 for (i in 1:length(p_mean)) {
   pb$tick() #progress bar
   Sys.sleep(1 / length(p_mean))
-  ggsave(p_mean[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_mean, paste("median_plot_", i, ".png", sep="")), width = 800, height = 900, units = "px")
+  ggsave(p_mean[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_mean, paste("median_plot_", i, ".png", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 
 Ncol= num_cols_grid
 Width= Ncol*num_grid
 Height= length(p_mean)/Ncol*(Width/Ncol)
-print("saving mean grid plot")
-print("please wait")
-ggsave(do.call(grid.arrange, c(p_mean_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("mean_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
+print("saving mean grid plot, please wait")
+
+#ggsave(do.call(grid.arrange, c(p_mean_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("mean_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
 
 
 Sys.sleep(3)
