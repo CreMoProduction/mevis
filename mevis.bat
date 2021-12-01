@@ -8,7 +8,7 @@ cls
 setlocal enabledelayedexpansion
 set "dot=."
 set "msg=initializing mevis"
-for /L %%A in (1,1,4) do (
+for /L %%A in (1,1,3) do (
 	set msg=!msg!%dot%
 	echo !msg!
 	timeout 1 >nul
@@ -17,14 +17,14 @@ for /L %%A in (1,1,4) do (
 )
 echo !msg!
 rem specify path and script name
-set "rscript=%~dp0\script.R" 
+set "rscript=%~dp0\hostscript.R" 
 
 rem define if R.exe is installed and use its path to launch script.R
 for /r "d:\Program Files" %%F in (*Rscript.exe*) do (
 	"%%~fF" "%rscript%" %*
 
 	rem msg * /time:4  "Succesfully failed"
-	Echo x=msgbox^("mevis succesfully finished data processing",64,"mevis"^)>"%temp%\msg.vbs"
+	Echo x=msgbox^("mevis finished running",64,"mevis"^)>"%temp%\msg.vbs"
 	start %temp%\msg.vbs
 	pause
 	timeout 2 >nul

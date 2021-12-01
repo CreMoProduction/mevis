@@ -1,8 +1,23 @@
 #mevis v0.2 alpha
 
+#debug settings, use --FALSE-- value when running in RStudio
+
+OS_environment = FALSE  #<-------EDIT HERE TO DEBUG MODE
+
+
+if (OS_environment==TRUE) {
+  #install.packages('plyr', repos = "http://cran.us.r-project.org")
+  print("running in OS environment")
+  options(repos = list(CRAN="http://cran.rstudio.com/"))
+} else {
+  print("runnning in RStudio environment")
+  rm(list=setdiff(ls(), "OS_environment"))   #clear environment
+}
+
+OS_environment
+#--------
 print("Welcome to mevis")
 #--------
-rm(list=ls()) #clear environment
 #проверяю устнаволенные пакеты, отсутствуюшие устанавливаю
 packages <- c("ggplot2", 
               "dplyr", 
@@ -13,24 +28,12 @@ packages <- c("ggplot2",
               "svDialogs", #для окна ввода popup prompt window
               "progress",  #делаю progress bar
               "rio",       #экспорт xlsx файл
-              "hnisc"      #нужно для error bars в mean plot
+              "hmisc"      #нужно для error bars в mean plot
               )
 install.packages(setdiff(packages, rownames(installed.packages())))
 
 #-----------
-
-#---можно удалить-00000000000
-#library(readxl)
-#library(gridExtra) #нужно для построения большого графика
-#library(ggplot2)
-#library(dplyr)
-#library(tidyverse) #использую для определния пути к этому скрипту
-#library(yaml)  #для импорта настроек
-#library(svDialogs) #для окна ввода popup prompt window
-#library(progress) #делаю progress bar
-#---
 lapply(packages, require, character.only = TRUE)
-
 #----------------
 #Объявляю глобальные переменные
 
@@ -49,10 +52,12 @@ name_column = NULL
 data_path = NULL
 excel_sheet = NULL
 dataset = NULL
+#OS_environment = FALSE
 
 #Импорт данных
   #---получаю путь к этому файлу
-  getCurrentFileLocation <-  function(){
+  if  (OS_environment==FALSE) { 
+    getCurrentFileLocation <-  function(){
     this_file <- commandArgs() %>% 
       tibble::enframe(name = NULL) %>%
       tidyr::separate(col=value, into=c("key", "value"), sep="=", fill='right') %>%
@@ -63,8 +68,13 @@ dataset = NULL
       this_file <- rstudioapi::getSourceEditorContext()$path
     }
     return(dirname(this_file))
+    }
+    currentfillelocation = getCurrentFileLocation()
+  } else {
+    currentfillelocation <- "C:/mevis_data"
   }
-  currentfillelocation = getCurrentFileLocation()
+  
+
   currentfillelocation = gsub("/res","",currentfillelocation) 
   
   #---импортирую настройки из файла config.yml
@@ -105,8 +115,12 @@ dataset = NULL
   num_cols_grid= config$num_cols_grid      #кол-во колонок в grid plot
   num_grid= config$num_grid                #кол-во 
   plot_title_size= config$plot_title_size  #размер шрифта для надписей награфике
+  plot_x_axis_lable_angle= config$plot_x_axis_lable_angle
+  plot_x_axis_lable_horizontal_adjust= config$plot_x_axis_lable_horizontal_adjust
+  plot_axis_lable_size= config$plot_axis_lable_size
+  plot_axis_title_size= config$plot_axis_title_size
   
-  
+
   
                                 
   
@@ -144,8 +158,7 @@ subDir3_mean<- "mean sort"
   colnames(dataset)
   TotalMetabolites<- dim(dataset)
   TotalMetabolites<- toString(TotalMetabolites[2])
-  dataset
-  TotalMetabolites
+  print(paste("Total metabolites found", TotalMetabolites))
 
 #----------
 #получаю названия групп Control, Ga500
@@ -216,7 +229,7 @@ if (metabolite_list_column_enabled!=TRUE) {
 
 predata=data.frame(chemicalN_column,predata)
 
-rm(data_mean, data_median)
+#rm(data_mean, data_median)
 
 data_mean <- c()
 data_median <- c()
@@ -361,7 +374,6 @@ Plot <- function(P_data, pvalue, FC, T_size, switch)  {
     error_range= stat_summary(fun.data="mean_sdl", fun.args = list(mult=1), 
                               geom="pointrange", width=0.2, color="grey70", size=0.5)
   }
-  print(data)
   for (i in 1:length(P_data)) {
   plotdata=cbind(chemicalN_column, data.frame(P_data[i]))
   x=names(plotdata)[1]
@@ -378,9 +390,9 @@ Plot <- function(P_data, pvalue, FC, T_size, switch)  {
     theme(plot.title = element_text(size=T_size), 
           plot.subtitle = element_text(size=T_size/1.3),
           legend.position = "none",                       #удаляю легенду
-          axis.text.x = element_text(angle = 90),
-          axis.text.x=element_text(size=5),
-          axis.text.y=element_text(size=5)
+          axis.text.x = element_text(angle = 90, hjust=1),
+          axis.text=element_text(size=5),
+          axis.title=element_text(size=5)
           ) 
   #geom_text(aes(label=round(value, 2)), size=3)+ #указываю величину площади пика и округляю ее
   #ylim(0, 5000) #указываю мин макс значения для y axis
@@ -394,14 +406,16 @@ Plot <- function(P_data, pvalue, FC, T_size, switch)  {
 
 p_median= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size, 1)
 p_median_grid= Plot(data_median, pvalue_kruskalwallis_data, fold_change_median_data, plot_title_size+5, 1)
-p_median_volcano
+p_median_volcano= NULL
 p_mean= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size, 0)
 p_mean_grid= Plot(data_mean, pvalue_anova_data, fold_change_mean_data, plot_title_size+5, 0)
-p_mean_volcano
+p_mean_volcano= NULL
 
 plotdataq=cbind(chemicalN_column, data.frame(data_mean[2]))
-cbind(Unique_Conditions, data.frame(meandata[2])-data.frame(sd_mean_data[2]))
-data_mean[2]
+#--------можно удалить
+#cbind(Unique_Conditions, data.frame(meandata[2])-data.frame(sd_mean_data[2]))
+#data_mean[2]
+#----------
 #-------------
 #создаю папки
 ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
@@ -456,7 +470,7 @@ print("saving mean plot")
 for (i in 1:length(p_mean)) {
   pb$tick() #progress bar
   Sys.sleep(1 / length(p_mean))
-  ggsave(p_mean[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_mean, paste(i, "_",colnames(data.frame(data_mean[i])), ".png", sep="")), width = plot_width, height = plot_height, units = "px")
+  #ggsave(p_mean[[i]], file=file.path(mainDir, subDir, subDir2, subDir3_mean, paste(i, "_",colnames(data.frame(data_mean[i])), ".png", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 
