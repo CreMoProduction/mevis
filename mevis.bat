@@ -20,13 +20,14 @@ rem specify path and script name
 set "rscript=%~dp0\hostscript.R" 
 
 rem define if R.exe is installed and use its path to launch script.R
-for /r "d:\Program Files" %%F in (*Rscript.exe*) do (
+for /r "c:\Program Files" %%F in (*Rscript.exe*) do (
 	"%%~fF" "%rscript%" %*
 
-	rem msg * /time:4  "Succesfully failed"
+	rem msg * /time:4  "Succeeded"
 	Echo x=msgbox^("mevis finished running",64,"mevis"^)>"%temp%\msg.vbs"
 	start %temp%\msg.vbs
 	pause
+    echo close in 2 seconds
 	timeout 2 >nul
   	goto :eof
 )

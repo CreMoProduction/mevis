@@ -2,19 +2,17 @@
 
 #debug settings, use --FALSE-- value when running in RStudio
 
-OS_environment = FALSE  #<-------EDIT HERE TO DEBUG MODE
+OS_environment = TRUE  #<-------EDIT HERE TO DEBUG MODE
 
 
 if (OS_environment==TRUE) {
   #install.packages('plyr', repos = "http://cran.us.r-project.org")
-  print("running in OS environment")
+  print("running in command prompt")
   options(repos = list(CRAN="http://cran.rstudio.com/"))
 } else {
   print("runnning in RStudio environment")
   rm(list=setdiff(ls(), "OS_environment"))   #clear environment
 }
-
-OS_environment
 #--------
 print("Welcome to mevis")
 #--------
@@ -25,10 +23,10 @@ packages <- c("ggplot2",
               "gridExtra", #нужно для построения большого графика
               "tidyverse", #использую для определния пути к этому скрипту
               "yaml",      #для импорта настроек
-              "svDialogs", #для окна ввода popup prompt window
+              #"svDialogs", #для окна ввода popup prompt window
               "progress",  #делаю progress bar
               "rio",       #экспорт xlsx файл
-              "hmisc"      #нужно для error bars в mean plot
+              "Hmisc"     #нужно для error bars в mean plot
               )
 install.packages(setdiff(packages, rownames(installed.packages())))
 
@@ -127,16 +125,25 @@ dataset = NULL
   #---импорт excel файла
   open_popup_window = config$open_popup_window
   if (open_popup_window==TRUE) {
-    datapath <- choose.files(default = "", caption = "Select input data (.xlsx)",
+    datapath <- choose.files(default = "", caption = "Select input data table (.xlsx)",
                                     multi = FALSE)
-    sheet <- dlgInput("Enter a number", "Sheet1")$res
+    #sheet <- dlgInput("Enter a number", "Sheet1")$res
+    if (length(excel_sheets(path = data_path))==1) {
+      sheet= excel_sheets(path = data_path)
+    } else {
+      sheet= excel_sheet
+    }
     dataset <- read_excel(datapath, sheet = sheet)
     Ncol= ncol(dataset)
   } else {
     #datapath="D://Ga Processed Data.xlsx"
     #sheet= "SIMCA 2.1"
     datapath=data_path
-    sheet= excel_sheet
+    if (length(excel_sheets(path = data_path))==1) {
+      sheet= excel_sheets(path = data_path)
+    } else {
+      sheet= excel_sheet
+    }
     dataset <- read_excel(datapath, sheet = sheet)
     Ncol= ncol(dataset)
   }
@@ -422,7 +429,7 @@ ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, su
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(mainDir, subDir, subDir2)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_median)), dir.create(file.path(mainDir, subDir, subDir2, subDir3_median)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_mean)), dir.create(file.path(mainDir, subDir, subDir2, subDir3_mean)), FALSE)
-file.path(mainDir, subDir, subDir2)
+print(paste("Path to save output:", file.path(mainDir, subDir, subDir2)))
 #------------
 #сохраняю xlsx файлы
 print("saving median xlsx")

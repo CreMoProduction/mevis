@@ -15,9 +15,12 @@ fold_change: 1.6
 p_value: 0.05
 
 #data loading
-data_path: D://Ga Processed Data.xlsx
-excel_sheet: SIMCA 2.1
-open_popup_window: false
+#TIP: better to use an excel workbook with only 1 sheet, otherwise specify one. 
+data_path: D://demo_metabolite_data.xlsx
+#specify sheet name if you have more than 1 sheet in excel workbook
+excel_sheet: Sheet1
+#if excel workbook contains more than 1 sheet --excel_sheet-- value will be used
+open_popup_window: true
 
 #settings
 

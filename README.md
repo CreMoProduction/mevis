@@ -1,7 +1,9 @@
-# mevis
+# mevis  
+![](https://img.shields.io/badge/-made%20with%20R-blue) [![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg)
+
 Compare multiple peak area of annotated metabolites and sort it using criteria, visualize peak area of sorted metabolites among conditions in jitter plots, export dadatable of sorted metabolites in excel file, export volcano plot (log2FC to log10p-value) baesd on metabolites from sorted list.
-------------------
-  
+
+----------  
 ### Sorting algorithm
 - calculates p value for parametric and non-parametric data using ANOVA and Kruskal Wallis tests respectively
 - calcualtes maximum time fold change (FC) for prior condition and the rest of used conditions  
@@ -26,7 +28,7 @@ Time Fold Change (FC) calculation is a highest qutient between prime condition a
 - St.Dev for compared conditions
 ```
   
-
+---------- 
 ### How to run
 By default mevis requires installed R on your computer in `C'\Proogram Files\R...` directory. 
 [^note]:
@@ -36,7 +38,7 @@ Make sure you have installed R, if not download [from here](https://cran.r-proje
 1. Download `mevis.zip` and unzip it.
 2. Enter user's settings in `config.yml` following included tips in config file.
 3. Launch `mevis.bat` file   
-4. If needed you can customize ggplot function in `hostscript.R` file
+4. If it is needed you can customize ggplot function in `hostscript.R` file
 	-Code to edit is inside the following commetns code: 
 	```
 	#=====================EDIT HERE================== 
@@ -52,12 +54,12 @@ Make sure you have installed R, if not download [from here](https://cran.r-proje
 - gridExtra 
 - tidyverse 
 - yaml      
-- svDialogs 
 - progress  
 - rio       
-- hmisc
+- Hmisc
 ```  
-> All output data will be saved in the same directory to input xlsx data and named as "mevis_output"  
+> All output data will be saved in the same directory to input xlsx data and named as "mevis_output"
+  
 For example: 
 - input data path: `D:\input_data.xlsx`
 - output data path: `D:\mevis_output - input_data\[date & time when saved]\...`
