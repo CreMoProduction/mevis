@@ -46,6 +46,7 @@ Make sure you have installed R, if not download [from here](https://cran.r-proje
 	#================================================
 	```
 > To run **mevis** in debug mode from [RStudio](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwiag7ih_cL0AhVCSfEDHTi5A24QFnoECAkQAQ&url=https%3A%2F%2Fwww.rstudio.com%2F&usg=AOvVaw1bt9MYkG-ySe7hgo9R8XTb) set `OS_enviroment` variable to `TRUE` in `hostscript.R` otherwise run it in command prompt by default.
+
 **mevis** requires listed below open source [CRAN](https://cran.r-project.org) packages: 
 ```
 - ggplot2 

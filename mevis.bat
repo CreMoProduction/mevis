@@ -24,8 +24,8 @@ for /r "c:\Program Files" %%F in (*Rscript.exe*) do (
 	"%%~fF" "%rscript%" %*
 
 	rem msg * /time:4  "Succeeded"
-	Echo x=msgbox^("mevis finished running",64,"mevis"^)>"%temp%\msg.vbs"
-	start %temp%\msg.vbs
+    rem Echo x=msgbox^("mevis finished running",64,"mevis"^)>"%temp%\msg.vbs"
+	rem start %temp%\msg.vbs
 	pause
     echo close in 2 seconds
 	timeout 2 >nul
