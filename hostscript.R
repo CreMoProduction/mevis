@@ -108,6 +108,10 @@ dataset = NULL
   export_mean_volcano_plot= config$export_mean_volcano_plot
   export_mean_xls_list= config$export_mean_xls_list
   
+  volcano_plot_log2_cutoff= config$volcano_plot_log2_cutoff
+  volcano_plot_log10_cutoff= config$volcano_plot_log10_cutoff
+  volcano_plot_title= config$volcano_plot_title
+  
   plot_width= config$plot_width
   plot_height= config$plot_height 
   num_cols_grid= config$num_cols_grid      #кол-во колонок в grid plot
@@ -353,11 +357,10 @@ for (i in 2:length(predata)) {
   length(sd_mean_data)
   length(pvalue_anova_data)
 
-  #print(paste("log2 FC",length(log2_fold_change_mean_data)))
-  #print(paste("log10 p", length(log10_pvalue_anova_data)))
+  print(paste("log2 FC",length(log2_fold_change_mean_data)))
+  print(paste("log10 p", length(log10_pvalue_anova_data)))
   print("")
   length(fold_change_mean_data)
-  length(r)
   #------------
   
   if (DifferenceNdown_median >= Difference & df.kruskal <= Pvalue) {
@@ -478,34 +481,74 @@ Plot <- function(P_data, pvalue, FC, T_size, axis_x_angle, axis_hjust, axis_text
 #================================================
 #================================================
 
-vPlot <- function() {}
-v_plotdata=cbind(log2_fold_change_mean_data, abs(log10_pvalue_anova_data))
-v_plotdata <- data.frame(apply(v_plotdata, 2, function(x) as.numeric(as.character(x))))
-v_plotdata=cbind(colnames(data.frame(data_mean)), v_plotdata)
-colnames(v_plotdata)[1]="metabolite"
-colnames(v_plotdata)[2]
-colnames(v_plotdata)[3]="log10_p_value"
-x=names(v_plotdata)[2]
-y=names(v_plotdata)[3]
-g<- ggplot(data=v_plotdata, aes_string(x=x, y=y, label=names(v_plotdata)[1])) +
-  geom_point() + 
-  theme_minimal() +
+
+vPlot <- function(log2_FC, log10_p_value, data_avg, log2_cutoff, log10_cutoff, title, T_size, axis_text, axis_title) {
+  log2_cutoff= as.numeric(log2_cutoff)
+  log10_cutoff=as.numeric(log10_cutoff)
+  if (log2_cutoff==0) {
+      alpha_val=0
+      print("0")
+    } else {
+      alpha_val=1
+      print(log2_cutoff)
+  }
+  if (log10_cutoff==0) {
+    alpha_val=0
+    } else {
+      alpha_val=1
+      print(log10_cutoff)
+  }
+  v_plotdata <- NULL
+  v_plotdata=cbind(log2_FC, abs(log10_p_value))
+  v_plotdata <- data.frame(apply(v_plotdata, 2, function(x) as.numeric(as.character(x))))
+  v_plotdata=cbind(colnames(data.frame(data_avg)), v_plotdata)
+  colnames(v_plotdata)[1]="metabolite"
+  #colnames(v_plotdata)[2]="log2 fold change"
+  colnames(v_plotdata)[3]="log10_p_value"
+  x=names(v_plotdata)[2]
+  y=names(v_plotdata)[3]
+  p<- ggplot(data=v_plotdata, aes_string(x=x, y=y, label=names(v_plotdata)[1])) +
+    geom_point(size=0.3) + 
+    theme_minimal() +
+    geom_vline(xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val) + 
+    geom_hline(yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val) +
+    scale_color_manual(values=c("blue", "black", "red")) +
+    labs(y="log10 p value", 
+         x="log2 fold change",
+         title=title,
+         )+
+    theme(
+      plot.title = element_text(size=T_size),
+      axis.text=element_text(size=axis_text),
+      axis.title=element_text(size=axis_title)
+    )
   
-  scale_color_manual(values=c("blue", "black", "red")) +
-  geom_vline(xintercept=c(-log2(1.6), log2(1.6)), col="red") +
-  geom_hline(yintercept=-log10(0.05), col="red")+
-  labs(y="log10 p value", 
-       x="log2 fold change",
-       )
+  return(p)
+}
 
-g
+p_volcano_mean=vPlot(log2_fold_change_mean_data,
+      log10_pvalue_anova_data,
+      data_mean,
+      volcano_plot_log2_cutoff,
+      volcano_plot_log10_cutoff,
+      volcano_plot_title,
+      plot_title_size,
+      plot_axis_lable_size,
+      plot_axis_title_size
+      )
 
+p_volcano_median= vPlot(log2_fold_change_median_data,
+                        log10_pvalue_kruskalwallis_data,
+                        data_median,
+                        volcano_plot_log2_cutoff,
+                        volcano_plot_log10_cutoff,
+                        volcano_plot_title,
+                        plot_title_size,
+                        plot_axis_lable_size,
+                        plot_axis_title_size
+                        )
 
-
-
-
-
-export(v_plotdata, "D://q.xlsx")
+#export(v_plotdata, "D://q.xlsx")
 
 
 
@@ -551,7 +594,7 @@ p_mean_grid= Plot(data_mean,
                   plot_axis_title_size,
                   0
                   )
-p_mean_volcano= NULL
+p_mean_volcano= vPlot(log2_fold_change_mean_data, log10_pvalue_anova_data, data_mean, volcano_plot_log2_cutoff, volcano_plot_log10_cutoff)
 
 plotdataq=cbind(conditionN_column, data.frame(data_mean[2]))
 #--------можно удалить
@@ -582,6 +625,9 @@ if (export_mean_xls_list==TRUE) {
   export(File, filepath)
   File=NULL
 }
+
+
+
 #------------
 
 
@@ -589,7 +635,15 @@ if (export_mean_xls_list==TRUE) {
 #сохраняю картинки из списков p
 
 #сохраняю volcano plot
+if (export_median_volcano_plot==TRUE) {
+  print("saving median volcano plot")
+  ggsave(p_volcano_median, file=file.path(mainDir, subDir, subDir2, paste("median volcano plot", ".png", sep="")), width = plot_width, height = plot_height, units = "px")
+}
 
+if (export_mean_volcano_plot==TRUE) {
+  print("saving mean volcano plot")
+  ggsave(p_volcano_mean, file=file.path(mainDir, subDir, subDir2, paste("mean volcano plot", ".png", sep="")), width = plot_width, height = plot_height, units = "px")
+}
 
 
 if (export_median_plot==TRUE) {
