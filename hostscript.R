@@ -2,7 +2,7 @@
 
 #debug settings, use --FALSE-- value when running in RStudio
 
-OS_environment = FALSE  #<-------EDIT HERE TO DEBUG MODE
+OS_environment = TRUE  #<-------EDIT HERE TO DEBUG MODE
 
 
 if (OS_environment==TRUE) {
@@ -10,11 +10,13 @@ if (OS_environment==TRUE) {
   print("running in command prompt")
   options(repos = list(CRAN="http://cran.rstudio.com/"))
 } else {
-  print("runnning in RStudio environment")
+  print("runnning in RStudio")
   rm(list=setdiff(ls(), "OS_environment"))   #clear environment
 }
 #--------
+print("----------------")
 print("Welcome to mevis")
+print("----------------")
 #--------
 #проверяю устнаволенные пакеты, отсутствуюшие устанавливаю
 packages <- c("ggplot2", 
@@ -138,7 +140,7 @@ dataset = NULL
     } else {
       sheet= excel_sheet
       if (sheet %in% excel_sheets(path = datapath)== FALSE) {
-        stop("could not find specified sheet in an excel workbook")
+        stop("Could not find specified sheet in an excel workbook")
       }
     }
     dataset <- read_excel(datapath, sheet = sheet)
@@ -176,8 +178,8 @@ subDir3_mean<- "mean sort"
 #базовая фигня для данных
   colnames(dataset)
   TotalMetabolites<- dim(dataset)
-  TotalMetabolites<- toString(TotalMetabolites[2])
-  print(paste("Total metabolites found", TotalMetabolites))
+  TotalMetabolites<- toString(TotalMetabolites[2]-(Metabolite-1))
+  print(paste("Total metabolites found in an excel workbook:", TotalMetabolites))
   #обработка ошибки если не найдены метаболиты
   if (str_length(TotalMetabolites)==0) {
     stop("Could not load metabolites from file")
@@ -190,9 +192,23 @@ conditionN_column= NULL
     conditionN = data.frame(dataset[as.numeric(gsub(":.*","",condition_name_row[n])):as.numeric(gsub(".*:","",condition_name_row[n]))-1, name_column])
     conditionN_column = rbind(conditionN_column, conditionN)
   }
-  Unique_Conditions = unique(conditionN_column)
-  ChimicalName= names(conditionN)
+Unique_Conditions = unique(conditionN_column)
+ChimicalName= names(conditionN)
 
+#проверка на valid prime condition
+t<-0
+for (i in 1:nrow(Unique_Conditions)) {
+  if (Unique_Conditions[i,1]==prime_condition_name) {
+    print(i)
+  } else {
+    t=t+1
+    print(paste("!",i))
+  }
+}
+if (t==nrow(Unique_Conditions)) {
+  stop("Please, enter valid prime condition")
+}
+#--------
 
 
 Data_Fun <- function(Metabolite) {
@@ -251,6 +267,7 @@ if (metabolite_list_column_enabled!=TRUE) {
 
 
 predata=data.frame(conditionN_column,predata)
+print(paste("Metabolites will be used in processing:", length(predata)-1))
 
 #rm(data_mean, data_median)
 
@@ -381,7 +398,17 @@ for (i in 2:length(predata)) {
   w1 <- NULL
 }
 
-
+#собирают данные для volcano plot
+v_plot_data <- function(log2_FC, log10_p_value, data_avg) {
+  v_plotdata <- NULL
+  v_plotdata=cbind(log2_FC, abs(log10_p_value))
+  v_plotdata <- data.frame(apply(v_plotdata, 2, function(x) as.numeric(as.character(x))))
+  v_plotdata=cbind(colnames(data.frame(data_avg)), v_plotdata)
+  colnames(v_plotdata)[1]="Metabolite"
+  #colnames(v_plotdata)[2]="log2 fold change"
+  colnames(v_plotdata)[3]="log10_p_value"
+  return(v_plotdata)
+}
 
 #------
 #создаю xlsx таблицу
@@ -443,7 +470,7 @@ p_median_grid <- list()
 p_mean <- list()
 p_mean_grid <- list()
 #================================================
-#=====================EDIT HERE==================
+#=============EDIT HERE SCATTER PLOT=============
 Plot <- function(P_data, pvalue, FC, T_size, axis_x_angle, axis_hjust, axis_text, axis_title, switch)  {
   if (switch==1) {
     error_range= geom_boxplot(color = "grey70", width=0.2)
@@ -462,7 +489,7 @@ Plot <- function(P_data, pvalue, FC, T_size, axis_x_angle, axis_hjust, axis_text
     labs(y="peak area", 
          x="",
          title=colnames(plotdata)[2],
-         subtitle=paste("p value=", format(round(pvalue[i], digits = 7), scientific=TRUE), "\nFC=", format(round(FC[i], digits = 2), scientific=FALSE)),
+         subtitle=paste("p value=", format(round(pvalue[i], digits = 8), scientific=TRUE), "\nFC=", format(round(FC[i], digits = 2), scientific=FALSE)),
     )+
     theme(plot.title = element_text(size=T_size), 
           plot.subtitle = element_text(size=T_size/1.3),
@@ -478,11 +505,10 @@ Plot <- function(P_data, pvalue, FC, T_size, axis_x_angle, axis_hjust, axis_text
   }
   return(p)
 }
-#================================================
-#================================================
 
-
-vPlot <- function(log2_FC, log10_p_value, data_avg, log2_cutoff, log10_cutoff, title, T_size, axis_text, axis_title) {
+#================================================
+#=============EDIT HERE VOLCANO PLOT=============
+vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_text, axis_title, conditions) {
   log2_cutoff= as.numeric(log2_cutoff)
   log10_cutoff=as.numeric(log10_cutoff)
   if (log2_cutoff==0) {
@@ -490,32 +516,30 @@ vPlot <- function(log2_FC, log10_p_value, data_avg, log2_cutoff, log10_cutoff, t
       print("0")
     } else {
       alpha_val=1
-      print(log2_cutoff)
   }
   if (log10_cutoff==0) {
     alpha_val=0
     } else {
       alpha_val=1
-      print(log10_cutoff)
+    }
+  
+  q<- c()
+  for (n in 1:nrow(Unique_Conditions)) {
+    q=c(q, Unique_Conditions[n,1])
   }
-  v_plotdata <- NULL
-  v_plotdata=cbind(log2_FC, abs(log10_p_value))
-  v_plotdata <- data.frame(apply(v_plotdata, 2, function(x) as.numeric(as.character(x))))
-  v_plotdata=cbind(colnames(data.frame(data_avg)), v_plotdata)
-  colnames(v_plotdata)[1]="metabolite"
-  #colnames(v_plotdata)[2]="log2 fold change"
-  colnames(v_plotdata)[3]="log10_p_value"
-  x=names(v_plotdata)[2]
-  y=names(v_plotdata)[3]
-  p<- ggplot(data=v_plotdata, aes_string(x=x, y=y, label=names(v_plotdata)[1])) +
+  
+  x=names(v_plot_data)[2]
+  y=names(v_plot_data)[3]
+  p<- ggplot(data=v_plot_data, aes_string(x=x, y=y, label=names(v_plot_data)[1])) +
     geom_point(size=0.3) + 
-    theme_minimal() +
-    geom_vline(xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val) + 
-    geom_hline(yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val) +
+    theme_classic() +
+    geom_vline(xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val, size=0.15) + 
+    geom_hline(yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val, size=0.15) +
     scale_color_manual(values=c("blue", "black", "red")) +
     labs(y="log10 p value", 
          x="log2 fold change",
          title=title,
+         subtitle= paste(as.character(q), collapse=" vs ")
          )+
     theme(
       plot.title = element_text(size=T_size),
@@ -525,10 +549,24 @@ vPlot <- function(log2_FC, log10_p_value, data_avg, log2_cutoff, log10_cutoff, t
   
   return(p)
 }
+#================================================
+#================================================
 
-p_volcano_mean=vPlot(log2_fold_change_mean_data,
-      log10_pvalue_anova_data,
-      data_mean,
+#записываю данные volcano plot
+v_plot_mean = v_plot_data(log2_fold_change_mean_data,
+                          log10_pvalue_anova_data,
+                          data_mean,
+                          Unique_Conditions
+                          )
+
+v_plot_median = v_plot_data(log2_fold_change_median_data,
+                            log10_pvalue_kruskalwallis_data,
+                            data_median,
+                            Unique_Conditions
+                            )
+#-------------
+
+p_volcano_mean = vPlot(v_plot_mean,
       volcano_plot_log2_cutoff,
       volcano_plot_log10_cutoff,
       volcano_plot_title,
@@ -537,9 +575,7 @@ p_volcano_mean=vPlot(log2_fold_change_mean_data,
       plot_axis_title_size
       )
 
-p_volcano_median= vPlot(log2_fold_change_median_data,
-                        log10_pvalue_kruskalwallis_data,
-                        data_median,
+p_volcano_median = vPlot(v_plot_median,
                         volcano_plot_log2_cutoff,
                         volcano_plot_log10_cutoff,
                         volcano_plot_title,
@@ -573,7 +609,6 @@ p_median_grid= Plot(data_median,
                     plot_axis_title_size, 
                     1
                     )
-p_median_volcano= NULL
 p_mean= Plot(data_mean,
              pvalue_anova_data,
              fold_change_mean_data,
@@ -594,7 +629,7 @@ p_mean_grid= Plot(data_mean,
                   plot_axis_title_size,
                   0
                   )
-p_mean_volcano= vPlot(log2_fold_change_mean_data, log10_pvalue_anova_data, data_mean, volcano_plot_log2_cutoff, volcano_plot_log10_cutoff)
+
 
 plotdataq=cbind(conditionN_column, data.frame(data_mean[2]))
 #--------можно удалить
@@ -614,7 +649,7 @@ if (export_median_xls_list==TRUE) {
   print("saving median xlsx")
   File= export_xlsx(data_median, fold_change_median_data, pvalue_kruskalwallis_data, mediandata, sd_median_data)
   filepath=file.path(mainDir, subDir, subDir2, paste("median_sort_list",".xlsx", sep=""))
-  export(File, filepath)
+  export(list(File, v_plot_median), filepath)
   File=NULL
 }
 
@@ -622,9 +657,10 @@ if (export_mean_xls_list==TRUE) {
   print("saving mean xlsx")
   File= export_xlsx(data_mean, fold_change_mean_data, pvalue_anova_data, meandata, sd_mean_data)
   filepath=file.path(mainDir, subDir, subDir2, paste("mean_sort_list",".xlsx", sep=""))
-  export(File, filepath)
+  export(list(File, v_plot_mean), filepath)
   File=NULL
 }
+
 
 
 
@@ -637,12 +673,12 @@ if (export_mean_xls_list==TRUE) {
 #сохраняю volcano plot
 if (export_median_volcano_plot==TRUE) {
   print("saving median volcano plot")
-  ggsave(p_volcano_median, file=file.path(mainDir, subDir, subDir2, paste("median volcano plot", ".png", sep="")), width = plot_width, height = plot_height, units = "px")
+  ggsave(p_volcano_median, file=file.path(mainDir, subDir, subDir2, paste("median volcano plot", ".jpg", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 if (export_mean_volcano_plot==TRUE) {
   print("saving mean volcano plot")
-  ggsave(p_volcano_mean, file=file.path(mainDir, subDir, subDir2, paste("mean volcano plot", ".png", sep="")), width = plot_width, height = plot_height, units = "px")
+  ggsave(p_volcano_mean, file=file.path(mainDir, subDir, subDir2, paste("mean volcano plot", ".jpg", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 
