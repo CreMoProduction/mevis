@@ -1,26 +1,26 @@
 
 #--------DATASET OPTIONS--------
 #data range selection
-condition_name_column: 4
-condition_name_row: 2,3:7,26:37
-metabolite_start_column: 8
+condition_name_column: 1
+condition_name_row: 5:52
+metabolite_start_column: 5
 metabolite_list_column_enabled: false
 #if --metabolite_list_column_enabled: true-- then specify columns in --metabolite_list_column--
 metabolite_list_column: 8,10:14,20
 #type in a name of prime condition in --prime_condition_name-- to calculate time fold change 
-prime_condition_name: Ga 500
+prime_condition_name: Ga_500
 
 #--------FILTER OPTIONS--------
 #set minimum fold change
-fold_change: 0
+fold_change: 5
 #set maximum p value
-p_value: 10.05
+p_value: 0.05
 
 #--------DATA LOADING OPTIONS--------
 #TIP: better to use an excel workbook with only 1 sheet, otherwise specify one. 
-data_path: D://demo_metabolite_data.xlsx
+data_path: D://Data Cells.xlsx
 #specify sheet name if you have more than 1 sheet in excel workbook
-excel_sheet: Sheet1
+excel_sheet: Sheet3
 #if excel workbook contains more than 1 sheet --excel_sheet-- value will be used
 open_popup_window: false
 
@@ -30,12 +30,13 @@ open_popup_window: false
 #--------EXPORT OPTIONS--------
 #export plots for parametric and non-parametric data
 #export data based on Kruskal Wallis
+#NOTE! Kruskal Wallis p-value cannot be calculated for 2 conditions
 export_median_plot: true
 export_median_grid_plot: false
 export_median_volcano_plot: true
 export_median_xls_list: true
 #export data based on ANOVA
-export_mean_plot: false
+export_mean_plot: true
 export_mean_grid_plot: false
 export_mean_volcano_plot: true
 export_mean_xls_list: true
@@ -54,7 +55,8 @@ plot_height: 900
 num_cols_grid: 8
 num_grid: 10
 plot_title_size: 7
-plot_x_axis_lable_angle: 0
+plot_geom_elements_size: 1
+plot_x_axis_lable_angle: 90
 plot_x_axis_lable_horizontal_adjust: 1
 plot_axis_lable_size: 5
 plot_axis_title_size: 7

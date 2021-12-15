@@ -2,7 +2,7 @@
 
 #debug settings, use --FALSE-- value when running in RStudio
 
-OS_environment = TRUE  #<-------EDIT HERE TO DEBUG MODE
+OS_environment = FALSE  #<-------EDIT HERE TO DEBUG MODE
 
 
 if (OS_environment==TRUE) {
@@ -119,6 +119,7 @@ dataset = NULL
   num_cols_grid= config$num_cols_grid      #кол-во колонок в grid plot
   num_grid= config$num_grid                #кол-во 
   plot_title_size= config$plot_title_size  #размер шрифта для надписей награфике
+  plot_geom_elements_size= config$plot_geom_elements_size #размер граических элементов на графике
   plot_x_axis_lable_angle= config$plot_x_axis_lable_angle
   plot_x_axis_lable_horizontal_adjust= config$plot_x_axis_lable_horizontal_adjust
   plot_axis_lable_size= config$plot_axis_lable_size
@@ -199,10 +200,10 @@ ChimicalName= names(conditionN)
 t<-0
 for (i in 1:nrow(Unique_Conditions)) {
   if (Unique_Conditions[i,1]==prime_condition_name) {
-    print(i)
+
   } else {
     t=t+1
-    print(paste("!",i))
+
   }
 }
 if (t==nrow(Unique_Conditions)) {
@@ -293,10 +294,25 @@ DifferenceNdown_median <- c()
 w0 <- c()
 w1 <- c()
 
-
+#ищу велечину, которая дальше нуля
 closest<-function(xv,sv){
-  xv[which(abs(xv-sv)==max(abs(xv-sv)))] }
+  if ((var(xv)==0)==TRUE) {
+    xv= xv[1]
+  } else {
+    xv=xv[which(abs(xv-sv)==max(abs(xv-sv)))] 
+  }
+  return(xv)
+}
 
+#проверка input если NaN и Inf, то заменить на  ноль (0)
+fix_nan_inf <- function(input) {
+  for (k in 1:length(input)) {
+    if (is.infinite(input[k])==TRUE | is.nan(input[k])==TRUE) {
+      input[k]= 0; input[k]
+    }
+  }
+  return(input)
+}  
 
 #алгоритм сортировки
 for (i in 2:length(predata)) {
@@ -324,28 +340,39 @@ for (i in 2:length(predata)) {
     }
   }
   
+  DifferenceNup_mean= fix_nan_inf(DifferenceNup_mean)
+  DifferenceNdown_mean= fix_nan_inf(DifferenceNdown_mean)
+  DifferenceNup_median= fix_nan_inf(DifferenceNup_median)
+  DifferenceNdown_median= fix_nan_inf(DifferenceNdown_median)
   
+ 
+
   for (m in 1:length(DifferenceNup_mean)) {
-    if (DifferenceNup_mean[m]<1) {
+    if (DifferenceNup_mean[m]<1 & DifferenceNup_mean[m]>0) {
       w0=c(w0, 1/DifferenceNup_mean[m]*-1)
-    } else (
+    } else if (DifferenceNup_mean[m]==0) {
+      w0=c(w0, 0)
+    }else {
       w0=c(w0, DifferenceNup_mean[m])
-    )
+    }
   }
+ 
   w0=closest(w0, 0)
+  max(w0)
   if (w0 <1) {
     DifferenceNup_mean=abs(1/w0)
   } else {
     DifferenceNup_mean=w0
   }
-  
-  
+
   for (m in 1:length(DifferenceNup_median)) {
-    if (DifferenceNup_median[m]<1) {
+    if (DifferenceNup_median[m]<1 & DifferenceNup_median[m]>0) {
       w1=c(w1, 1/DifferenceNup_median[m]*-1)
-    } else (
+    } else if (DifferenceNup_median[m]==0) {
+      w1=c(w1, 0)
+    }else {
       w1=c(w1, DifferenceNup_median[m])
-    )
+    }
   }
   w1=closest(w1, 0)
   if (w1 <1) {
@@ -369,15 +396,15 @@ for (i in 2:length(predata)) {
   }
   
   #можно удалить
-  length(data_mean)
-  length(meandata)
-  length(sd_mean_data)
-  length(pvalue_anova_data)
+  #length(data_mean)
+  #length(meandata)
+  #length(sd_mean_data)
+  #length(pvalue_anova_data)
 
-  print(paste("log2 FC",length(log2_fold_change_mean_data)))
-  print(paste("log10 p", length(log10_pvalue_anova_data)))
-  print("")
-  length(fold_change_mean_data)
+  #print(paste("log2 FC",length(log2_fold_change_mean_data)))
+  #print(paste("log10 p", length(log10_pvalue_anova_data)))
+  #print("")
+  #length(fold_change_mean_data)
   #------------
   
   if (DifferenceNdown_median >= Difference & df.kruskal <= Pvalue) {
@@ -397,6 +424,14 @@ for (i in 2:length(predata)) {
   w0 <- NULL
   w1 <- NULL
 }
+
+log2_fold_change_mean_data= fix_nan_inf(log2_fold_change_mean_data)
+log10_pvalue_anova_data= fix_nan_inf(log10_pvalue_anova_data)
+log2_fold_change_median_data= fix_nan_inf(log2_fold_change_median_data)
+log10_pvalue_kruskalwallis_data= fix_nan_inf(log10_pvalue_kruskalwallis_data)
+
+
+
 
 #собирают данные для volcano plot
 v_plot_data <- function(log2_FC, log10_p_value, data_avg) {
@@ -473,19 +508,19 @@ p_mean_grid <- list()
 #=============EDIT HERE SCATTER PLOT=============
 Plot <- function(P_data, pvalue, FC, T_size, axis_x_angle, axis_hjust, axis_text, axis_title, switch)  {
   if (switch==1) {
-    error_range= geom_boxplot(color = "grey70", width=0.2)
+    error_range= geom_boxplot(color = "grey70", width=plot_geom_elements_size/5, size=plot_geom_elements_size/4)
   } else {
     error_range= stat_summary(fun.data="mean_sdl", fun.args = list(mult=1), 
-                              geom="pointrange", width=0.2, color="grey70", size=0.5)
+                              geom="pointrange", width=plot_geom_elements_size/5, color="grey70", size=plot_geom_elements_size/8)
   }
   for (i in 1:length(P_data)) {
   plotdata=cbind(conditionN_column, data.frame(P_data[i]))
   x=names(plotdata)[1]
   y=names(plotdata)[2]
-   g<- ggplot(plotdata, aes_string(x=x, y=y, color=x, shape=x)) +
+   g<- ggplot(plotdata, aes_string(x=x, y=y, color=x)) +
     theme_classic()+
     error_range+
-    geom_jitter(width = 0.25, size=3)+ 
+    geom_jitter(width = 0.25, size=plot_geom_elements_size)+ 
     labs(y="peak area", 
          x="",
          title=colnames(plotdata)[2],
@@ -513,7 +548,6 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
   log10_cutoff=as.numeric(log10_cutoff)
   if (log2_cutoff==0) {
       alpha_val=0
-      print("0")
     } else {
       alpha_val=1
   }
@@ -531,18 +565,18 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
   x=names(v_plot_data)[2]
   y=names(v_plot_data)[3]
   p<- ggplot(data=v_plot_data, aes_string(x=x, y=y, label=names(v_plot_data)[1])) +
-    geom_point(size=0.3) + 
+    geom_point(size=plot_geom_elements_size/3.33) + 
     theme_classic() +
     geom_vline(xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val, size=0.15) + 
     geom_hline(yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val, size=0.15) +
     scale_color_manual(values=c("blue", "black", "red")) +
-    labs(y="log10 p value", 
+    labs(y="-log10 p value", 
          x="log2 fold change",
          title=title,
          subtitle= paste(as.character(q), collapse=" vs ")
          )+
     theme(
-      plot.title = element_text(size=T_size),
+      plot.title = element_text(size=T_size/1.4),
       axis.text=element_text(size=axis_text),
       axis.title=element_text(size=axis_title)
     )
@@ -555,14 +589,12 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
 #записываю данные volcano plot
 v_plot_mean = v_plot_data(log2_fold_change_mean_data,
                           log10_pvalue_anova_data,
-                          data_mean,
-                          Unique_Conditions
+                          data_mean
                           )
 
 v_plot_median = v_plot_data(log2_fold_change_median_data,
                             log10_pvalue_kruskalwallis_data,
-                            data_median,
-                            Unique_Conditions
+                            data_median
                             )
 #-------------
 
@@ -663,7 +695,6 @@ if (export_mean_xls_list==TRUE) {
 
 
 
-
 #------------
 
 
@@ -672,11 +703,15 @@ if (export_mean_xls_list==TRUE) {
 
 #сохраняю volcano plot
 if (export_median_volcano_plot==TRUE) {
+  if (nrow(Unique_Conditions)>2) {
+    print("Note! You are using more than 2 conditions in volcano plotю The highest FC will be used in log2(FC) axis")
+  }
   print("saving median volcano plot")
   ggsave(p_volcano_median, file=file.path(mainDir, subDir, subDir2, paste("median volcano plot", ".jpg", sep="")), width = plot_width, height = plot_height, units = "px")
 }
 
 if (export_mean_volcano_plot==TRUE) {
+
   print("saving mean volcano plot")
   ggsave(p_volcano_mean, file=file.path(mainDir, subDir, subDir2, paste("mean volcano plot", ".jpg", sep="")), width = plot_width, height = plot_height, units = "px")
 }
