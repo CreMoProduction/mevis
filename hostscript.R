@@ -109,6 +109,7 @@ dataset = NULL
   export_mean_grid_plot= config$export_mean_grid_plot
   export_mean_volcano_plot= config$export_mean_volcano_plot
   export_mean_xls_list= config$export_mean_xls_list
+  export_mean_stacked_bar_plot= config$export_mean_stacked_bar_plot
   
   volcano_plot_log2_cutoff= config$volcano_plot_log2_cutoff
   volcano_plot_log10_cutoff= config$volcano_plot_log10_cutoff
@@ -172,6 +173,7 @@ subDir <- paste("mevis_output -",mainFile)
 subDir2 <- sub("CEST","",Sys.time())
 subDir2<- gsub(" ", "_", subDir2)
 subDir2<- gsub(":", "-", subDir2)
+subDir2<- paste("[",subDir2,"]", " ", "(FC-",Difference, ", p-",Pvalue,")", sep="")
 subDir3_median<- "median sort"
 subDir3_mean<- "mean sort"
 
@@ -294,9 +296,10 @@ DifferenceNdown_median <- c()
 w0 <- c()
 w1 <- c()
 
+
 #ищу велечину, которая дальше нуля
 closest<-function(xv,sv){
-  if ((var(xv)==0)==TRUE) {
+  if ((var(xv)==0)==TRUE & length(xv)>2) {
     xv= xv[1]
   } else {
     xv=xv[which(abs(xv-sv)==max(abs(xv-sv)))] 
@@ -339,7 +342,6 @@ for (i in 2:length(predata)) {
     } else {
     }
   }
-  
   DifferenceNup_mean= fix_nan_inf(DifferenceNup_mean)
   DifferenceNdown_mean= fix_nan_inf(DifferenceNdown_mean)
   DifferenceNup_median= fix_nan_inf(DifferenceNup_median)
@@ -445,6 +447,39 @@ v_plot_data <- function(log2_FC, log10_p_value, data_avg) {
   return(v_plotdata)
 }
 
+#собирают данные для stacked bar plot
+stacked_bar_data <- function() {
+  q <- NULL
+  q1 <- NULL
+  r=NULL
+  r1= NULL
+  r2= NULL
+  i=1
+  q=data.frame(colnames(data.frame(data_mean)))
+  colnames(q)=NULL
+  r=data.frame(meandata)
+  for (n in 1:length(r)) {
+    if((n %% 2) == 0) {
+      q1=q[i,1]
+      q1= rbind(q1[rep(1, nrow(r)), ])
+      colnames(q1)="Metabolite"
+      r1= mutate(r[n-1], r[n])
+      r1= mutate(q1,r1)
+      colnames(r1)[2]= "Condition"
+      colnames(r1)[3]= "Avg"
+      r2=rbind(r2,r1)
+      i=i+1
+    }
+  }
+  r2=r2.summary = r2 %>% group_by(Metabolite, Condition) %>% 
+    summarise(Avg = sum(Avg)) %>%   # Within each Brand, sum all values in each Category
+    mutate(percent = Avg/sum(Avg),
+           pos = cumsum(percent) - 0.5*percent)
+  return(r2)
+}
+stacked_bar_data=stacked_bar_data()
+
+
 #------
 #создаю xlsx таблицу
 export_xlsx <- function(in_data, fc, pvalue, avg_data, sd) {
@@ -453,7 +488,7 @@ export_xlsx <- function(in_data, fc, pvalue, avg_data, sd) {
   z2=NULL
   z=t(Unique_Conditions)
   for (i in 1:ncol(z)) {
-    z1[i]=paste("Median ","'", z[i], "'", sep="")
+    z1[i]=paste("Avg ","'", z[i], "'", sep="")
     }
   for (i in 1:ncol(z)) {
     z2[i]=paste("StDev ","'", z[i], "'", sep="")
@@ -576,7 +611,7 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
          subtitle= paste(as.character(q), collapse=" vs ")
          )+
     theme(
-      plot.title = element_text(size=T_size/1.4),
+      plot.title = element_text(size=T_size/1.5),
       axis.text=element_text(size=axis_text),
       axis.title=element_text(size=axis_title)
     )
@@ -584,7 +619,28 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
   return(p)
 }
 #================================================
+#===========EDIT HERE STACKED BAR PLOT===========
+stacked_bar_plot=function(input_data) {
+  p<- ggplot(input_data, aes(fill = Condition,
+                 y = Avg, x = Metabolite))+
+  geom_bar(position = "fill", stat = "identity",  width = .7, colour="grey30", lwd=0.1)+
+  ggtitle("")+
+  coord_flip() +
+  #geom_text(aes(label=ifelse(percent >= 0.07, paste0(sprintf("%.0f", percent*100),"%"),""),
+  #              y=pos), colour="white", size=plot_axis_lable_size/2) +
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+  return(p)
+}
+ 
+
+
+
 #================================================
+#================================================
+
+#записываю данные stacked bar plot
+p_stacked_bar= stacked_bar_plot(stacked_bar_data)
 
 #записываю данные volcano plot
 v_plot_mean = v_plot_data(log2_fold_change_mean_data,
@@ -620,7 +676,7 @@ p_volcano_median = vPlot(v_plot_median,
 
 
 
-
+#записываю данные scatter plot
 p_median= Plot(data_median,
                pvalue_kruskalwallis_data,
                fold_change_median_data,
@@ -670,6 +726,11 @@ plotdataq=cbind(conditionN_column, data.frame(data_mean[2]))
 #----------
 #-------------
 #создаю папки
+q<- c()
+for (n in 1:nrow(Unique_Conditions)) {
+  q=c(q, Unique_Conditions[n,1])
+}
+subDir2 <- paste(subDir2,". ", paste(as.character(q), collapse=" vs "), sep="")
 ifelse(!dir.exists(file.path(mainDir, subDir)), dir.create(file.path(mainDir, subDir)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2)), dir.create(file.path(mainDir, subDir, subDir2)), FALSE)
 ifelse(!dir.exists(file.path(mainDir, subDir, subDir2, subDir3_median)), dir.create(file.path(mainDir, subDir, subDir2, subDir3_median)), FALSE)
@@ -693,8 +754,9 @@ if (export_mean_xls_list==TRUE) {
   File=NULL
 }
 
-
-
+#сохраняю config.yml в output папку
+print("saving congig.yml")
+file.copy(file.path(currentfillelocation, "config.yml"), file.path(mainDir, subDir, subDir2, "config.yml"))
 #------------
 
 
@@ -704,7 +766,7 @@ if (export_mean_xls_list==TRUE) {
 #сохраняю volcano plot
 if (export_median_volcano_plot==TRUE) {
   if (nrow(Unique_Conditions)>2) {
-    print("Note! You are using more than 2 conditions in volcano plotю The highest FC will be used in log2(FC) axis")
+    print("Note! You are using more than 2 conditions in volcano plot. The highest FC will be used in log2(FC) axis")
   }
   print("saving median volcano plot")
   ggsave(p_volcano_median, file=file.path(mainDir, subDir, subDir2, paste("median volcano plot", ".jpg", sep="")), width = plot_width, height = plot_height, units = "px")
@@ -729,15 +791,12 @@ if (export_median_plot==TRUE) {
 }
 
 if (export_median_grid_plot==TRUE) {
+  #сохраняю grid median картинки
   Ncol= num_cols_grid
   Width= Ncol*num_grid
   Height= length(p_median)/Ncol*(Width/Ncol)
   print("saving median grid plot, please wait")
   ggsave(do.call(grid.arrange, c(p_median_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("median_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
-}
-
-if (export_median_volcano_plot==TRUE) {
-  print("saving median volcano plot, please wait")
 }
 
 if (export_mean_plot==TRUE) {
@@ -752,6 +811,7 @@ if (export_mean_plot==TRUE) {
 }
 
 if (export_mean_grid_plot==TRUE) {
+  #сохраняю grid mean картинки
   Ncol= num_cols_grid
   Width= Ncol*num_grid
   Height= length(p_mean)/Ncol*(Width/Ncol)
@@ -759,8 +819,9 @@ if (export_mean_grid_plot==TRUE) {
   ggsave(do.call(grid.arrange, c(p_mean_grid, ncol = Ncol)), file=file.path(mainDir, subDir, subDir2,paste("mean_grid_plot",".png", sep="")), width = Width, height = Height, units = "cm")
 }
 
-if (export_mean_volcano_plot==TRUE) {
-  print("saving mean volcano plot, please wait")
+if (export_mean_stacked_bar_plot==TRUE) {
+  print("saving mean stacked bar plot, please wait")
+  ggsave(p_stacked_bar, file=file.path(mainDir, subDir, subDir2, paste("stacked_bars_plot", ".jpg", sep="")), width = 44*(length(meandata)/2)*0.0264583333, height = 720*0.0264583333, units = "cm")
 }
 
 Sys.sleep(3)
@@ -768,11 +829,18 @@ print("I'm done")
 
 
 
+#================================================
+#================================================
 
 
 
 
 
+
+
+
+
+       
 
 
 
