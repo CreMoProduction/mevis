@@ -272,8 +272,28 @@ if (metabolite_list_column_enabled!=TRUE) {
 predata=data.frame(conditionN_column,predata)
 print(paste("Metabolites will be used in processing:", length(predata)-1))
 
-#rm(data_mean, data_median)
 
+#ищу велечину, которая дальше нуля
+closest<-function(xv,sv){
+  if ((var(xv)==0)==TRUE & length(xv)>2) {
+    xv= xv[1]
+  } else {
+    xv=xv[which(abs(xv-sv)==max(abs(xv-sv)))] 
+  }
+  return(xv)
+}
+
+#проверка input если NaN и Inf, то заменить на  ноль (0)
+fix_nan_inf <- function(input) {
+  for (k in 1:length(input)) {
+    if (is.infinite(input[k])==TRUE | is.nan(input[k])==TRUE) {
+      input[k]= 0; input[k]
+    }
+  }
+  return(input)
+}  
+
+#rm(data_mean, data_median)
 data_mean <- c()
 data_median <- c()
 meandata <- c()
@@ -296,27 +316,9 @@ DifferenceNdown_median <- c()
 w0 <- c()
 w1 <- c()
 
-
-#ищу велечину, которая дальше нуля
-closest<-function(xv,sv){
-  if ((var(xv)==0)==TRUE & length(xv)>2) {
-    xv= xv[1]
-  } else {
-    xv=xv[which(abs(xv-sv)==max(abs(xv-sv)))] 
-  }
-  return(xv)
-}
-
-#проверка input если NaN и Inf, то заменить на  ноль (0)
-fix_nan_inf <- function(input) {
-  for (k in 1:length(input)) {
-    if (is.infinite(input[k])==TRUE | is.nan(input[k])==TRUE) {
-      input[k]= 0; input[k]
-    }
-  }
-  return(input)
-}  
-
+i=2
+#=============================================
+#=================SORTING HERE================
 #алгоритм сортировки
 for (i in 2:length(predata)) {
   df=data.frame(conditionN_column,predata[i])
@@ -342,41 +344,46 @@ for (i in 2:length(predata)) {
     } else {
     }
   }
+  
   DifferenceNup_mean= fix_nan_inf(DifferenceNup_mean)
   DifferenceNdown_mean= fix_nan_inf(DifferenceNdown_mean)
   DifferenceNup_median= fix_nan_inf(DifferenceNup_median)
   DifferenceNdown_median= fix_nan_inf(DifferenceNdown_median)
   
- 
+
 
   for (m in 1:length(DifferenceNup_mean)) {
-    if (DifferenceNup_mean[m]<1 & DifferenceNup_mean[m]>0) {
+    if (DifferenceNup_mean[m]<1) {
       w0=c(w0, 1/DifferenceNup_mean[m]*-1)
-    } else if (DifferenceNup_mean[m]==0) {
-      w0=c(w0, 0)
-    }else {
+    } else {
       w0=c(w0, DifferenceNup_mean[m])
     }
   }
  
   w0=closest(w0, 0)
-  max(w0)
+  if (length(w0)>1) {
+  w0=max(w0)
+  }
   if (w0 <1) {
     DifferenceNup_mean=abs(1/w0)
   } else {
     DifferenceNup_mean=w0
   }
+  
+  #print(paste("L2 DifferenceNup_mean: ",DifferenceNup_mean,"|DifferenceNdown_mean: ", DifferenceNdown_mean, i-1))
+  
 
   for (m in 1:length(DifferenceNup_median)) {
-    if (DifferenceNup_median[m]<1 & DifferenceNup_median[m]>0) {
+    if (DifferenceNup_median[m]<1) {
       w1=c(w1, 1/DifferenceNup_median[m]*-1)
-    } else if (DifferenceNup_median[m]==0) {
-      w1=c(w1, 0)
-    }else {
+    } else {
       w1=c(w1, DifferenceNup_median[m])
     }
   }
   w1=closest(w1, 0)
+  if (length(w1)>1) {
+    w1=max(w1)
+  }
   if (w1 <1) {
     DifferenceNup_median=abs(1/w1)
   } else {
@@ -384,7 +391,9 @@ for (i in 2:length(predata)) {
   }
 
   DifferenceNdown_mean=closest(DifferenceNdown_mean, 0)
+  if (length(DifferenceNdown_mean)>1) {DifferenceNdown_mean=DifferenceNdown_mean[1]}
   DifferenceNdown_median=closest(DifferenceNdown_median, 0)
+  if (length(DifferenceNdown_median)>1) {DifferenceNdown_median=DifferenceNdown_median[1]}
   #соритрую
   if (DifferenceNdown_mean >= Difference & df.aov <= Pvalue) {
     data_mean=c(data_mean, predata[i])
@@ -398,11 +407,16 @@ for (i in 2:length(predata)) {
   }
   
   #можно удалить
-  #length(data_mean)
-  #length(meandata)
-  #length(sd_mean_data)
-  #length(pvalue_anova_data)
-
+ # print(paste("p:", pvalue_anova_data, length(pvalue_anova_data), "|", i-1))
+  #print(paste("mean:", fold_change_mean_data, length(fold_change_mean_data), "|", i-1))
+  length(data_mean)
+  length(meandata)
+  length(sd_mean_data)
+  length(pvalue_anova_data)
+  length(log2_fold_change_mean_data)
+  length(log10_pvalue_anova_data)
+  length(fold_change_mean_data)
+  #print("")
   #print(paste("log2 FC",length(log2_fold_change_mean_data)))
   #print(paste("log10 p", length(log10_pvalue_anova_data)))
   #print("")
@@ -432,8 +446,8 @@ log10_pvalue_anova_data= fix_nan_inf(log10_pvalue_anova_data)
 log2_fold_change_median_data= fix_nan_inf(log2_fold_change_median_data)
 log10_pvalue_kruskalwallis_data= fix_nan_inf(log10_pvalue_kruskalwallis_data)
 
-
-
+#=============================================
+#=============================================
 
 #собирают данные для volcano plot
 v_plot_data <- function(log2_FC, log10_p_value, data_avg) {
@@ -599,22 +613,35 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
   
   x=names(v_plot_data)[2]
   y=names(v_plot_data)[3]
-  p<- ggplot(data=v_plot_data, aes_string(x=x, y=y, label=names(v_plot_data)[1])) +
-    geom_point(size=plot_geom_elements_size/3.33) + 
+  p<- ggplot(data=v_plot_data, aes_string(x=x, y=y, 
+                                          label=names(v_plot_data)[1]
+                                            
+                                            )) +
+    geom_point(size=plot_geom_elements_size/1.6, shape = 21, colour = "grey20", fill = "#40b8d0",alpha = 0.7) + 
     theme_classic() +
-    geom_vline(xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val, size=0.15) + 
-    geom_hline(yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val, size=0.15) +
+    geom_vline(linetype = "dashed", xintercept=c(-log2(log2_cutoff), log2(log2_cutoff)), col="red", alpha=alpha_val, size=0.15) + 
+    geom_hline(linetype = "dashed", yintercept=-log10(log10_cutoff), col="red", alpha=alpha_val, size=0.15) +
     scale_color_manual(values=c("blue", "black", "red")) +
-    labs(y="-log10 p value", 
-         x="log2 fold change",
+    labs(y=expression (log[10]~"P value"), 
+         x=expression (log[2]~"fold change"),
          title=title,
          subtitle= paste(as.character(q), collapse=" vs ")
          )+
     theme(
-      plot.title = element_text(size=T_size/1.5),
+      plot.title = element_text(size=T_size/2),
+      plot.subtitle = element_text(size=T_size/1),
       axis.text=element_text(size=axis_text),
       axis.title=element_text(size=axis_title)
-    )
+    )+
+    geom_text_repel(data = subset(v_plot_data, v_plot_data[3] > max(v_plot_data[3])-max(v_plot_data[3])/3),
+                    size = plot_geom_elements_size/2.1,
+                    nudge_x = 6, direction = "y", 
+                    col="grey20", 
+                    segment.color = 'grey70',
+                    segment.size= 0.1
+                    )+
+    xlim(min(v_plot_data[2]), max(v_plot_data[2]+1.8))
+
   
   return(p)
 }
@@ -622,14 +649,19 @@ vPlot <- function(v_plot_data, log2_cutoff, log10_cutoff, title, T_size, axis_te
 #===========EDIT HERE STACKED BAR PLOT===========
 stacked_bar_plot=function(input_data) {
   p<- ggplot(input_data, aes(fill = Condition,
-                 y = Avg, x = Metabolite))+
+                 y = percent, x = Metabolite))+
   geom_bar(position = "fill", stat = "identity",  width = .7, colour="grey30", lwd=0.1)+
   ggtitle("")+
   coord_flip() +
-  #geom_text(aes(label=ifelse(percent >= 0.07, paste0(sprintf("%.0f", percent*100),"%"),""),
-  #              y=pos), colour="white", size=plot_axis_lable_size/2) +
-  theme(plot.title = element_text(hjust = 0.5))+
-  theme_minimal()
+  geom_text(aes(label=ifelse(percent >= 0.07, paste0(sprintf("%.0f", percent*100),"%"),"")),
+            position=position_stack(vjust=0.5), colour="white", size=plot_axis_lable_size/2.2) +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        )
+
   return(p)
 }
  
@@ -653,6 +685,8 @@ v_plot_median = v_plot_data(log2_fold_change_median_data,
                             data_median
                             )
 #-------------
+
+
 
 p_volcano_mean = vPlot(v_plot_mean,
       volcano_plot_log2_cutoff,
@@ -820,8 +854,9 @@ if (export_mean_grid_plot==TRUE) {
 }
 
 if (export_mean_stacked_bar_plot==TRUE) {
+  #сохраняю stacked barplot картинки
   print("saving mean stacked bar plot, please wait")
-  ggsave(p_stacked_bar, file=file.path(mainDir, subDir, subDir2, paste("stacked_bars_plot", ".jpg", sep="")), width = 44*(length(meandata)/2)*0.0264583333, height = 720*0.0264583333, units = "cm")
+  ggsave(p_stacked_bar, file=file.path(mainDir, subDir, subDir2, paste("stacked_bars_plot", ".jpg", sep="")), width = 1200*0.0264583333, height =  30*(length(meandata)/2)*0.0264583333, units = "cm")
 }
 
 Sys.sleep(3)
